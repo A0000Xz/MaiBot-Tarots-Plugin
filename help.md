@@ -1,5 +1,7 @@
 **Q：如何添加牌组？**
+
 **A：请按下面的操作处理**
+
 首先你需要准备一个文件夹放在tarot_jsons文件夹内，这个文件夹的名字将会成为你的牌组名字
 
 ![QQ_1751118739813](https://github.com/user-attachments/assets/96b76b6f-db5c-4bc6-849e-c14024632899)
