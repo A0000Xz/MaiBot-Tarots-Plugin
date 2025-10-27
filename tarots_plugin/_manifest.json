@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "塔罗牌插件",
-  "version": "1.3.0",
+  "version": "1.4.6",
   "description": "提供了抽塔罗牌占卜功能，具有模拟人类的调用方式和独特自定义风格的解牌回复。牌面为B站幻星集",
   "author": {
     "name": "A肆零西烛",
@@ -10,7 +10,7 @@
   "license": "AGPL-v3.0",
   "host_application": {
     "min_version": "0.9.1",
-    "max_version": "0.9.1"
+    "max_version": "0.11.0"
   },
   "keywords": ["tarot", "divination","moderation","bilibili"],
   "categories": ["Moderation", "Entertainment-oriented divination"],

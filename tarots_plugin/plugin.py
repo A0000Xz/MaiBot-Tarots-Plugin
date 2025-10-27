@@ -1,14 +1,10 @@
 from src.plugin_system.base.base_plugin import BasePlugin
 from src.plugin_system.apis.plugin_register_api import register_plugin
-from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
+from src.plugin_system.base.base_action import BaseAction, ActionActivationType
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo
 from src.plugin_system.base.config_types import ConfigField
-from src.plugin_system.apis import generator_api
-from src.plugin_system.apis import database_api
-from src.plugin_system.apis import config_api
-from src.common.database.database_model import Messages, PersonInfo
-from src.person_info.person_info import get_person_info_manager
+from src.plugin_system.apis import generator_api, config_api, message_api
 from src.common.logger import get_logger
 from PIL import Image
 from typing import Tuple, Dict, Optional, List, Any, Type
@@ -23,21 +19,19 @@ import base64
 import toml
 import io
 import os
-import re
+import time
 
 logger = get_logger("tarots")
 
 class TarotsAction(BaseAction):
     action_name = "tarots"
 
-    # 双激活类型配置
-    focus_activation_type = ActionActivationType.LLM_JUDGE
-    normal_activation_type = ActionActivationType.ALWAYS
+    # 一些必要的初始化
+    activation_type = ActionActivationType.ALWAYS
     activation_keywords = ["抽一张塔罗牌", "抽张塔罗牌"]
     keyword_case_sensitive = False
 
      # 模式和并行控制
-    mode_enable = ChatMode.ALL
     parallel_action = False
 
     action_description = "执行塔罗牌占卜，支持多种抽牌方式" # action描述
@@ -58,7 +52,7 @@ class TarotsAction(BaseAction):
     
     def __init__(self,
     action_data: dict,
-    reasoning: str,
+    action_reasoning: str,
     cycle_timers: dict,
     thinking_id: str,
     global_config: Optional[dict] = None,
@@ -67,7 +61,7 @@ class TarotsAction(BaseAction):
         # 显式调用父类初始化
         super().__init__(
         action_data=action_data,
-        reasoning=reasoning,
+        action_reasoning=action_reasoning,
         cycle_timers=cycle_timers,
         thinking_id=thinking_id,
         global_config=global_config,
@@ -171,23 +165,11 @@ class TarotsAction(BaseAction):
             # 结果处理
             result_text = f"【{formation_name}牌阵 - {self.using_cards}牌组】\n"
             failed_images = []  # 记录获取失败的图片
-            reply_to = self.action_data.get("target_message", None)
+            reply_message = self.action_message
+            user_nickname = self.user_nickname
 
-            if not reply_to:
+            if not reply_message:
                 return False, "未找到相关回复消息，中止塔罗牌抽取"
-            
-            # 解析reply_to参数
-            if ":" in reply_to:
-                parts = reply_to.split(":", 1)
-            elif "：" in reply_to:
-                parts = reply_to.split("：", 1)
-            else:
-                return False, "reply_to格式不正确"
-
-            if len(parts) != 2:
-                return False, "reply_to格式不正确"
-
-            user_nickname = parts[0].strip()
 
             for idx, (card_id, is_reverse) in enumerate(selected_cards):
                 card_data = self.card_map[card_id]
@@ -198,7 +180,7 @@ class TarotsAction(BaseAction):
                 img_data = await self._get_card_image(card_id, is_reverse)
                 if img_data:
                     b64_data = base64.b64encode(img_data).decode('utf-8')
-                    await self.send_custom("image", b64_data, False, f"{reply_to}")
+                    await self.send_custom("image", b64_data, False, True, reply_message)
                 else:
                     # 记录失败的图片
                     failed_images.append(f"{card_data['name']}({'逆位' if is_reverse else '正位'})")
@@ -217,19 +199,10 @@ class TarotsAction(BaseAction):
                 await self.send_text(error_msg)
                 return False, ""
                 
-            # 发送最终文本
             await asyncio.sleep(1.5) # 权宜之计，给最后一张图片1.5s的发送起跑时间，无可奈何的办法
             
             original_text = self.config["adjustment"].get("enable_original_text", False)
             self_id = config_api.get_global_config("bot.qq_account")
-
-            # 查询自己机器人本体的名字，因为可乐允许机器人自己更改自己的绰号，还一直在不断的改！
-            self_personinfo = await database_api.db_get(
-            PersonInfo,
-            filters={"user_id": f"{self_id}"},
-            limit=1,
-            single_result = True
-            )
 
             message_text = ""
 
@@ -242,33 +215,14 @@ class TarotsAction(BaseAction):
                 enable_splitter=False,
                 enable_chinese_typo=False
             ) # 让你的麦麦用自己的语言风格阐释结果
-      
-            # 获取数据库内最近1条记录
-            records = await database_api.db_get(
-            Messages,
-            filters={"user_id": f"{self_id}"},
-            order_by="-time",
-            limit=1,
-            single_result = True
-            )
 
-            # 处理records文本中的引用格式
-            processed_record_text = ""
-            if records:
-                processed_record_text = records['processed_plain_text']
-                
-                # 处理回复格式
-                reply_match = re.search(r"回复<([^:<>]+):([^:<>]+)>", processed_record_text)
-                if reply_match:
-                    person_id = get_person_info_manager().get_person_id("qq", reply_match.group(2))
-                    person_name = await get_person_info_manager().get_value(person_id, "person_name") or reply_match.group(1)
-                    processed_record_text = re.sub(r"回复<[^:<>]+:[^:<>]+>", f"回复 {person_name}", processed_record_text, count=1)
-                
-                # 处理@格式
-                for match in re.finditer(r"@<([^:<>]+):([^:<>]+)>", processed_record_text):
-                    person_id = get_person_info_manager().get_person_id("qq", match.group(2))
-                    person_name = await get_person_info_manager().get_value(person_id, "person_name") or match.group(1)
-                    processed_record_text = processed_record_text.replace(match.group(0), f"@{person_name}")
+            current_time = time.time()
+            start_time = current_time - 300
+      
+            # 获取最近1条麦麦自身记录
+            records = message_api.get_messages_by_time_in_chat_for_users(
+                self.chat_id, start_time, current_time, [self_id], 1
+            )[0]
    
             if original_text:
                 await self.send_text(result_text)
@@ -276,11 +230,11 @@ class TarotsAction(BaseAction):
 
             if result_status:
              # 合并所有消息片段
-                message_text = result_message[0][1]
+                message_text = result_message.reply_set.reply_data[0].content
     
             # 一次性发送合并的消息
             if message_text:
-                await self.send_custom("text", message_text, False, f"{self_personinfo['person_name']}:{processed_record_text}")
+                await self.send_custom("text", message_text, False, True, records)
                 logger.info("合并消息已发送")
             else:
                 return False, "消息生成错误，很可能是generator炸了"
@@ -767,7 +721,7 @@ class TarotsPlugin(BasePlugin):
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "config_version": ConfigField(type=str, default="1.3.0", description="插件配置文件版本号"),
+            "config_version": ConfigField(type=str, default="1.4.6", description="插件配置文件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
         },
         "components": {
