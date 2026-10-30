@@ -1,9 +1,10 @@
-{   
+{
     "_meta": {
         "card_types": "全部",
         "total_cards": 78,
         "description": "B站幻星集塔罗牌组 - 包含全部牌面",
-        "base_url": "https://raw.githubusercontent.com/FloatTech/zbpdata/main/Tarot/"
+        "base_url": "https://raw.githubusercontent.com/FloatTech/zbpdata/main/Tarot/",
+        "notice": "2233 娘形象版权归哔哩哔哩所有，本牌组仅作个人非商业娱乐；商业用途请自行取得授权。"
     },
     "0": {
         "name": "愚者",

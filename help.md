@@ -1,13 +1,32 @@
-**Q：如何添加牌组？**
+# 如何添加自己的牌组
 
-**A：请按下面的操作处理**
+1. 在 `tarot_jsons/` 下新建一个文件夹，**文件夹名就是牌组名**
+2. 在里面放一个 `tarots.json`，格式如下（`0`–`21` 为大阿卡纳，`22`–`77` 为小阿卡纳）：
 
-首先你需要准备一个文件夹放在tarot_jsons文件夹内，这个文件夹的名字将会成为你的牌组名字
+```json
+{
+  "_meta": {
+    "card_types": "大阿卡纳",
+    "total_cards": 22,
+    "description": "我的牌组",
+    "base_url": "https://example.com/tarot/"
+  },
+  "0": {
+    "name": "愚者",
+    "info": {
+      "description": "正位牌义",
+      "reverseDescription": "逆位牌义",
+      "imgUrl": "MajorArcana/0.png"
+    }
+  }
+}
+```
 
-![QQ_1751118739813](https://github.com/user-attachments/assets/96b76b6f-db5c-4bc6-849e-c14024632899)
+- `base_url` + `imgUrl` 组成卡面图片的完整下载地址
+- 图片会在第一次抽到时下载并缓存到插件 data 目录的 `tarots_cache/<牌组名>/`
+- 只有 `_meta.card_types` 声明的范围会被抽到（`全部` / `大阿卡纳` / `小阿卡纳`）
 
-然后确保你的文件夹里有一个tarots.json，然后你就可以根据你的需要编写你的牌组文件了
+3. 把新牌组名加进插件配置 `[cards] use_cards`，保存后**不用重启**
+4. 用 `/tarots switch <牌组名>` 切换，或用 `/tarots cache` 预缓存全部卡面
 
-![QQ_1751119263337](https://github.com/user-attachments/assets/548b5620-382b-4539-bd7c-ff35d4839726)
-
-编写完以后，**不用重启麦麦**，就可以试试切换到新的牌组进行抽牌或者缓存了。
+> 注意：请只使用你有权使用的卡面图片。公版（如 1909 韦特塔罗、马赛塔罗）或你自制/获授权的图源最稳妥。

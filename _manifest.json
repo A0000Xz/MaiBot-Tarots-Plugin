@@ -1,20 +1,40 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
+  "id": "github.a0000xz.maibot-tarots-plugin",
+  "version": "2.0.0",
   "name": "塔罗牌插件",
-  "version": "1.4.6",
-  "description": "提供了抽塔罗牌占卜功能，具有模拟人类的调用方式和独特自定义风格的解牌回复。牌面为B站幻星集",
+  "description": "抽塔罗牌占卜：8 种牌阵、大/小阿卡纳、多套牌组、卡面缓存，并用麦麦自己的人设语气解牌",
   "author": {
-    "name": "A肆零西烛",
+    "name": "A0000Xz",
     "url": "https://github.com/A0000Xz"
   },
-  "license": "AGPL-v3.0",
-  "host_application": {
-    "min_version": "0.9.1",
-    "max_version": "0.11.1"
+  "license": "AGPL-3.0",
+  "urls": {
+    "repository": "https://github.com/A0000Xz/MaiBot-Tarots-Plugin",
+    "homepage": "https://github.com/A0000Xz/MaiBot-Tarots-Plugin",
+    "documentation": "https://github.com/A0000Xz/MaiBot-Tarots-Plugin/blob/main/README.md",
+    "issues": "https://github.com/A0000Xz/MaiBot-Tarots-Plugin/issues"
   },
-  "keywords": ["tarot", "divination","moderation","bilibili"],
-  "categories": ["Moderation", "Entertainment-oriented divination"],
-  "repository_url": "https://github.com/A0000Xz/MaiBot-Tarots-Plugin",
-  "default_locale": "zh-CN",
-  "locales_path": "_locales"
+  "changelog": "CHANGELOG.md",
+  "host_application": {
+    "min_version": "1.3.13",
+    "max_version": "1.3.99"
+  },
+  "sdk": {
+    "min_version": "2.16.0",
+    "max_version": "2.99.99"
+  },
+  "dependencies": [],
+  "capabilities": [
+    "send.text",
+    "send.image",
+    "maisaka.reply.generate"
+  ],
+  "i18n": {
+    "default_locale": "zh-CN",
+    "supported_locales": [
+      "zh-CN"
+    ]
+  },
+  "plugin_type": "entertainment"
 }
