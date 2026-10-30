@@ -39,11 +39,14 @@ class FormationAndDeckTest(unittest.TestCase):
 
     def test_formations_loaded(self) -> None:
         formations = PLUGIN.load_formations()
-        self.assertGreaterEqual(len(formations), 8)
+        self.assertGreaterEqual(len(formations), 11)
         for name in PLUGIN.FALLBACK_FORMATION_NAMES:
             self.assertIn(name, formations, name)
         self.assertEqual(formations["单张"]["cards_num"], 1)
         self.assertEqual(formations["六芒星"]["cards_num"], 7)
+        self.assertEqual(formations["凯尔特十字"]["cards_num"], 10)
+        self.assertEqual(formations["二选一"]["cards_num"], 5)
+        self.assertEqual(formations["身心灵"]["cards_num"], 3)
         self.assertEqual(len(formations["时间之流"]["represent"]), 3)
         self.assertTrue(formations["时间之流"]["represent"])
 
@@ -162,6 +165,12 @@ class IntentParseTest(unittest.TestCase):
         )
         self.assertEqual(PLUGIN.parse_formation_from_text("帮我抽三张", self.formations), "时间之流")
         self.assertEqual(PLUGIN.parse_formation_from_text("随便抽一张", self.formations), "单张")
+        # 懂塔罗的群友用自己的说法也能触发
+        self.assertEqual(PLUGIN.parse_formation_from_text("抽个凯尔特十字", self.formations), "凯尔特十字")
+        self.assertEqual(PLUGIN.parse_formation_from_text("帮我做二选一", self.formations), "二选一")
+        self.assertEqual(PLUGIN.parse_formation_from_text("用身心灵看看", self.formations), "身心灵")
+        self.assertEqual(PLUGIN.parse_formation_from_text("过去现在未来", self.formations), "时间之流")
+        self.assertEqual(PLUGIN.parse_formation_from_text("来个十字牌阵", self.formations), "吉普赛十字")
 
     def test_parse_card_type(self) -> None:
         self.assertEqual(PLUGIN.parse_card_type_from_text("只看大阿卡纳"), "大阿卡纳")

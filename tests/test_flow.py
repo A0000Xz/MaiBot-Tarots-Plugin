@@ -445,6 +445,20 @@ class ThumbnailTest(PluginTestCase):
         self.assertIn("send.image", harness.capabilities())
 
 
+class FormationsCommandTest(PluginTestCase):
+    """牌阵列表：所有人可用。"""
+
+    async def test_formations_list_for_everyone(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        success, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id="99999", matched_groups={"action": "formations"}
+        )
+        self.assertTrue(success)
+        self.assertIn("可用牌阵", message)
+        self.assertIn("凯尔特十字", message)
+        self.assertIn("身心灵", message)
+
+
 class ConfigTest(PluginTestCase):
     """配置默认值与配置页 Schema。"""
 

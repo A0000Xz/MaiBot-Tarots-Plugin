@@ -49,7 +49,25 @@ FALLBACK_FORMATION_NAMES = (
     "吉普赛十字",
     "马蹄",
     "六芒星",
+    "凯尔特十字",
+    "二选一",
+    "身心灵",
 )
+
+# 牌阵别名：让懂塔罗的群友用自己的说法也能触发
+FORMATION_ALIASES: dict[str, tuple[str, ...]] = {
+    "单张": ("单牌", "一张", "抽一张", "单卡", "抽1张"),
+    "圣三角": ("三角牌阵", "三角阵", "圣三角牌阵", "三角"),
+    "时间之流": ("三张", "三牌", "三张牌", "过去现在未来", "时间流", "时间之流牌阵", "抽3张"),
+    "四要素": ("四元素", "风火水土", "四要素牌阵", "四张"),
+    "五牌阵": ("五张", "五牌", "五张牌", "五牌阵牌阵"),
+    "吉普赛十字": ("十字", "十字牌阵", "吉普赛"),
+    "马蹄": ("马蹄形", "马蹄阵", "六张", "六牌"),
+    "六芒星": ("六芒星阵", "六角星", "六芒", "七张", "七牌"),
+    "凯尔特十字": ("凯尔特", "凯尔特阵", "十张", "十牌", "凯尔特十牌"),
+    "二选一": ("二择一", "两个选择", "AB选择", "二选一牌阵"),
+    "身心灵": ("身心灵牌阵", "身心", "精神牌阵"),
+}
 
 NUMERAL_EMOJI = ("1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟")
 ORIENTATION_UP = "☀️ 正位"
@@ -65,7 +83,7 @@ _TAROT_WORDS = ("塔罗", "占卜")
 _DRAW_INTENT_WORDS = ("抽", "占卜", "卜", "算", "测", "看", "问", "求", "来", "帮")
 _MENTION_PATTERN = re.compile(r"@[^\s@]+")
 _TAROTS_COMMAND_PATTERN = (
-    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily)(?:\s+(?P<value>\S+))?"
+    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations)(?:\s+(?P<value>\S+))?"
 )
 
 PERSONA_INSTRUCTION = (
@@ -106,6 +124,20 @@ SPREAD_LAYOUTS: dict[str, list[tuple[float, float]]] = {
         (-0.6, 0.95),
         (0.0, 0.0),
     ],
+    "凯尔特十字": [
+        (-1.9, -0.6),
+        (-0.95, -0.6),
+        (0.0, -0.6),
+        (0.95, -0.6),
+        (1.9, -0.6),
+        (-1.9, 0.6),
+        (-0.95, 0.6),
+        (0.0, 0.6),
+        (0.95, 0.6),
+        (1.9, 0.6),
+    ],
+    "二选一": [(-0.95, -0.55), (-0.95, 0.55), (0.95, -0.55), (0.95, 0.55), (0.0, 0.0)],
+    "身心灵": [(-0.95, 0.0), (0.0, 0.0), (0.95, 0.0)],
 }
 
 CARD_W, CARD_H = 260, 390
@@ -206,16 +238,20 @@ def looks_like_tarot_request(text: str) -> bool:
 
 
 def parse_formation_from_text(text: str, formations: dict[str, dict[str, Any]]) -> str:
-    """从自然语言里识别牌阵名；没说就用单张。"""
+    """从自然语言里识别牌阵名（支持内置别名与自定义牌阵）；没说就用单张。"""
 
     normalized = _MENTION_PATTERN.sub(" ", text)
+    normalized = normalized.replace(" ", "")
+    # 先匹配完整牌阵名，再匹配别名，避免「十字」抢走「凯尔特十字」
     for name in formations:
         if name in normalized:
             return name
-    if "三张" in normalized and "时间之流" in formations:
-        return "时间之流"
-    if "十字" in normalized and "吉普赛十字" in formations:
-        return "吉普赛十字"
+    for name, aliases in FORMATION_ALIASES.items():
+        if name not in formations:
+            continue
+        for alias in aliases:
+            if alias in normalized:
+                return name
     return DEFAULT_FORMATION
 
 
@@ -694,7 +730,8 @@ class TarotsPlugin(MaiBotPlugin):
         "tarot_draw",
         description=(
             "【塔罗占卜专用】当聊天里有人想抽塔罗牌、用塔罗占卜、看运势/吉凶/感情/工作/天气时调用。"
-            "会按牌阵抽 1~7 张牌、发送牌阵布局图，并用当前人设给出解读。"
+            "会按牌阵抽 1~10 张牌、发送牌阵布局图，并用当前人设给出解读。"
+            "常用牌阵：单张、圣三角、时间之流、四要素、五牌阵、吉普赛十字、马蹄、六芒星、凯尔特十字、二选一、身心灵；"
             "用户没指定牌阵时用「单张」，没指定范围时用「全部」；只是聊到塔罗而没人想抽牌时不要调用。"
         ),
         parameters=[
@@ -794,7 +831,7 @@ class TarotsPlugin(MaiBotPlugin):
 
     @Command(
         "tarots_command",
-        description="/tarots daily（所有人）｜ list / switch / allow / lock / cache（管理员）",
+        description="/tarots daily | formations（所有人）｜ list / switch / allow / lock / cache（管理员）",
         pattern=_TAROTS_COMMAND_PATTERN,
     )
     async def handle_tarots_command(self, **kwargs: Any) -> tuple[bool, str, int]:
@@ -808,8 +845,8 @@ class TarotsPlugin(MaiBotPlugin):
 
         if not self.config.components.enable_commands:
             return False, "塔罗插件指令已在配置中关闭", 1
-        # /tarots daily 对所有人开放，其余指令仅管理员可用
-        if action != "daily" and not self._is_admin(user_id):
+        # 这几个指令对所有人开放，其余仅管理员可用
+        if action not in ("daily", "formations") and not self._is_admin(user_id):
             message = "🔒 权限不足：请让管理员把你的 QQ 号加入插件配置的 [permissions] admin_users。"
             await self._reply_text(stream_id, message)
             return False, message, 1
@@ -817,6 +854,8 @@ class TarotsPlugin(MaiBotPlugin):
         skip_send = False
         if action == "list":
             message = self._deck_list_text()
+        elif action == "formations":
+            message = self._formations_text()
         elif action == "switch":
             message = await self._switch_deck(value)
         elif action == "allow":
@@ -1267,6 +1306,20 @@ class TarotsPlugin(MaiBotPlugin):
         blocks.append("")
         blocks.append("切换：/tarots switch <牌组名>")
         blocks.append("缓存：/tarots cache ｜ 撤销解锁：/tarots lock <牌组名>")
+        return "\n".join(blocks)
+
+    def _formations_text(self) -> str:
+        """列出所有可用牌阵（含自定义）。"""
+
+        blocks = [f"🔮 可用牌阵（{len(self._formations)} 种）", "━━━━━━━━━━━━━━"]
+        for name, formation in self._formations.items():
+            custom = " · 自定义" if formation.get("custom") else ""
+            positions = " / ".join(formation.get("represent") or [])
+            cut = "可逆位" if formation.get("is_cut") else "全正位"
+            blocks.append(f"🃏 {name}（{formation['cards_num']} 张 · {cut}{custom}）\n   {positions}")
+        blocks.append("")
+        blocks.append("用法：直接说「用<牌阵名>占卜…」，例如「用六芒星帮我看看最近运势」")
+        blocks.append("也可以说「抽三张」「过去现在未来」「凯尔特十字」等常见说法")
         return "\n".join(blocks)
 
     async def _allow_deck(self, deck_id: str) -> str:
