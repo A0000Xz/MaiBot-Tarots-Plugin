@@ -20,6 +20,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -63,13 +64,53 @@ SEND_RETRY_DELAY = 1.0
 _TAROT_WORDS = ("塔罗", "占卜")
 _DRAW_INTENT_WORDS = ("抽", "占卜", "卜", "算", "测", "看", "问", "求", "来", "帮")
 _MENTION_PATTERN = re.compile(r"@[^\s@]+")
-_TAROTS_COMMAND_PATTERN = r"/tarots\s+(?P<action>cache|switch|list|allow|lock)(?:\s+(?P<value>\S+))?"
+_TAROTS_COMMAND_PATTERN = (
+    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily)(?:\s+(?P<value>\S+))?"
+)
 
 PERSONA_INSTRUCTION = (
     "请用你平时说话的语气，为用户解读下面的塔罗牌结果："
     "只依据材料里的牌名、正逆位和牌义，不要编造其他牌；"
     "不要输出标题或列表格式，像聊天一样自然地说，控制在 5 句以内。"
 )
+
+FOLLOWUP_INSTRUCTION = (
+    "用户正在追问上一次塔罗占卜。请用你平时说话的语气接着回答，"
+    "只根据上一次的牌面材料回答，不要重新抽牌、不要编造其他牌；像聊天一样自然，控制在 4 句以内。"
+)
+
+DAILY_INSTRUCTION = (
+    "这是给用户的「今日一牌」。请用你平时说话的语气，结合牌面和这句话给一句今日运势解读，"
+    "温暖一点、具体一点，控制在 3 句以内。"
+)
+
+FOLLOWUP_WORDS = ("刚才", "上一张", "那张牌", "这个牌阵", "继续", "再解释", "什么意思", "怎么说")
+DAILY_WORDS = ("每日一牌", "今日一牌", "每天一牌", "今日塔罗", "今天塔罗", "今日运势", "今天运势")
+LAST_DRAW_TTL = 600  # 追问上下文保留 10 分钟
+
+# 各牌阵的卡牌中心位置（单位：一张牌宽/高），未列出的牌阵按网格排布
+SPREAD_LAYOUTS: dict[str, list[tuple[float, float]]] = {
+    "单张": [(0.0, 0.0)],
+    "时间之流": [(-0.95, 0.0), (0.0, 0.0), (0.95, 0.0)],
+    "圣三角": [(-0.9, 0.55), (0.0, -0.55), (0.9, 0.55)],
+    "四要素": [(-0.6, -0.6), (0.6, -0.6), (-0.6, 0.6), (0.6, 0.6)],
+    "吉普赛十字": [(0.0, 0.0), (-0.95, 0.0), (0.95, 0.0), (0.0, -0.95), (0.0, 0.95)],
+    "五牌阵": [(0.0, 0.0), (-0.95, 0.35), (0.95, 0.35), (0.0, -0.8), (0.0, 0.95)],
+    "马蹄": [(-1.25, 0.55), (-0.9, -0.2), (-0.35, -0.7), (0.35, -0.7), (0.9, -0.2), (1.25, 0.55)],
+    "六芒星": [
+        (-1.2, 0.0),
+        (-0.6, -0.95),
+        (0.6, -0.95),
+        (1.2, 0.0),
+        (0.6, 0.95),
+        (-0.6, 0.95),
+        (0.0, 0.0),
+    ],
+}
+
+CARD_W, CARD_H = 260, 390
+CARD_GAP = 30
+LABEL_H = 46
 
 
 def load_json(path: Path) -> dict[str, Any] | None:
@@ -259,6 +300,121 @@ def build_persona_material(
     return "\n".join(lines)
 
 
+def load_custom_formations(data_dir: Path) -> dict[str, dict[str, Any]]:
+    """从 data 目录读取用户自定义牌阵（formations.json），校验后返回。"""
+
+    raw = load_json(data_dir / "formations.json")
+    if not raw:
+        return {}
+    formations: dict[str, dict[str, Any]] = {}
+    for name, value in raw.items():
+        if not isinstance(value, dict):
+            continue
+        cards_num = value.get("cards_num")
+        represent = value.get("represent")
+        if not isinstance(cards_num, int) or not 1 <= cards_num <= 10:
+            continue
+        if not isinstance(represent, list) or not represent or not isinstance(represent[0], list):
+            continue
+        positions = [str(item) for item in represent[0]]
+        while len(positions) < cards_num:
+            positions.append(f"位置{len(positions) + 1}")
+        formations[str(name).strip()] = {
+            "cards_num": cards_num,
+            "is_cut": bool(value.get("is_cut", False)),
+            "represent": positions[:cards_num],
+            "custom": True,
+        }
+    return {name: value for name, value in formations.items() if name}
+
+
+def _load_font(size: int) -> Any:
+    """尽量找一个能显示中文的字体；找不到就退回默认字体。"""
+
+    try:
+        from PIL import ImageFont
+    except ImportError:
+        return None
+    for path in (
+        r"C:\Windows\Fonts\msyh.ttc",
+        r"C:\Windows\Fonts\simhei.ttf",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    ):
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def compose_spread_image(
+    formation_name: str,
+    entries: Sequence[tuple[bytes, str, str]],
+) -> bytes | None:
+    """把整副牌按牌阵位置拼成一张布局图（entries: 图片字节, 牌名, 位置名）。"""
+
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+    if not entries:
+        return None
+    try:
+        count = len(entries)
+        layout = SPREAD_LAYOUTS.get(formation_name)
+        if layout is None or len(layout) != count:
+            columns = 1 if count == 1 else min(3, count)
+            rows = (count + columns - 1) // columns
+            layout = [
+                ((index % columns) - (columns - 1) / 2, (index // columns) - (rows - 1) / 2)
+                for index in range(count)
+            ]
+        cell_w = CARD_W + CARD_GAP
+        cell_h = CARD_H + LABEL_H + CARD_GAP
+        xs = [x for x, _ in layout]
+        ys = [y for _, y in layout]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        margin = 46
+        title_h = 86
+        width = int((max_x - min_x) * cell_w + CARD_W + 2 * margin)
+        height = int((max_y - min_y) * cell_h + CARD_H + LABEL_H + 2 * margin + title_h)
+        canvas = Image.new("RGB", (width, height), (16, 14, 24))
+        draw = ImageDraw.Draw(canvas)
+
+        title_font = _load_font(34)
+        label_font = _load_font(24)
+        title = f"TAROT · {formation_name}牌阵"
+        if title_font is not None:
+            box = draw.textbbox((0, 0), title, font=title_font)
+            draw.text(((width - (box[2] - box[0])) / 2, 28), title, font=title_font, fill=(214, 178, 108))
+
+        for index, (image_bytes, card_name, position) in enumerate(entries):
+            x_unit, y_unit = layout[index]
+            left = margin + (x_unit - min_x) * cell_w
+            top = margin + title_h + (y_unit - min_y) * cell_h
+            with Image.open(io.BytesIO(image_bytes)) as card:
+                card = card.convert("RGB")
+                card.thumbnail((CARD_W, CARD_H))
+                draw.rectangle(
+                    [left - 3, top - 3, left + CARD_W + 3, top + CARD_H + 3],
+                    outline=(201, 164, 92),
+                    width=2,
+                )
+                canvas.paste(card, (int(left), int(top)))
+            label = f"{position} · {card_name}"
+            if label_font is not None:
+                box = draw.textbbox((0, 0), label, font=label_font)
+                text_x = left + (CARD_W - (box[2] - box[0])) / 2
+                draw.text((text_x, top + CARD_H + 10), label, font=label_font, fill=(240, 232, 214))
+        buffer = io.BytesIO()
+        canvas.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+    except Exception:
+        return None
+
+
 # ──── WebUI 配置页布局（只重组展示，不改配置模型 / 默认值 / TOML 路径）────
 
 
@@ -304,8 +460,13 @@ _UI_SECTIONS: dict[str, _UiSection] = {
     "draw_advanced": _UiSection(
         source="adjustment",
         title="呈现细节",
-        description="emoji 与图片缺失时的处理方式，一般保持默认即可。",
-        fields={"emoji_enabled": "结果使用 emoji", "strict_images": "卡面缺失时中止占卜"},
+        description="emoji、布局图与图片容错，一般保持默认即可。",
+        fields={
+            "emoji_enabled": "结果使用 emoji",
+            "strict_images": "卡面缺失时中止占卜",
+            "layout_image": "牌阵布局合成图",
+            "show_deck_thumbnail": "牌组列表附预览图",
+        },
         collapsed=True,
     ),
     "proxy": _UiSection(
@@ -340,6 +501,8 @@ _UI_HINTS: dict[str, str] = {
     "adjustment.enable_original_text": "在人设解读之外，额外发一份未经过滤的牌面文本，方便对照。",
     "adjustment.emoji_enabled": "结果标题与正逆位前的 emoji。",
     "adjustment.strict_images": "开：任一张卡面下载失败就中止占卜；关：降级为纯文字解读。",
+    "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张布局图再发（更像真的牌阵）；关：逐张发送牌面。",
+    "adjustment.show_deck_thumbnail": "/tarots list 回复后附一张当前牌组的预览图。",
     "proxy.enable_proxy": "只有在部署机访问不了卡面图源时才需要开。",
     "proxy.proxy_url": "例如 http://127.0.0.1:7890；只用于下载卡面。",
     "plugin.config_version": "由插件维护，不要手动改。",
@@ -447,6 +610,8 @@ class AdjustmentSection(PluginConfigBase):
     )
     emoji_enabled: bool = Field(default=True, description="结果文本里是否使用 emoji")
     strict_images: bool = Field(default=True, description="卡面图片缺失时是否中止占卜（关闭则降级为纯文字）")
+    layout_image: bool = Field(default=True, description="把整副牌阵合成一张布局图发送（关闭则逐张发送）")
+    show_deck_thumbnail: bool = Field(default=True, description="/tarots list 附带当前牌组预览图")
 
 
 class PermissionsSection(PluginConfigBase):
@@ -485,6 +650,7 @@ class TarotsPlugin(MaiBotPlugin):
         self._using_cards: str = ""
         self._unlocked_decks: list[str] = []
         self._image_cache: dict[tuple[str, str], bytes] = {}
+        self._last_draws: dict[str, dict[str, Any]] = {}
 
     @classmethod
     def build_config_schema(cls, **plugin_info: str) -> dict[str, Any]:
@@ -498,10 +664,10 @@ class TarotsPlugin(MaiBotPlugin):
         """加载牌阵与牌组，记录启动信息。"""
 
         self.ctx.paths.data_dir.mkdir(parents=True, exist_ok=True)
-        self._formations = load_formations()
+        self._reload_formations()
         self._apply_deck_state()
         self.ctx.logger.info(
-            "塔罗牌插件已加载：%d 种牌阵，当前牌组=%s，可用牌组=%s，管理员=%d",
+            "塔罗牌插件已加载：%d 种牌阵（含自定义），当前牌组=%s，可用牌组=%s，管理员=%d",
             len(self._formations),
             self._using_cards or "（无）",
             self._allowed_decks(),
@@ -518,6 +684,7 @@ class TarotsPlugin(MaiBotPlugin):
         """配置热更新后重载牌组。"""
 
         del config_data
+        self._reload_formations()
         self._apply_deck_state()
         self.ctx.logger.info("塔罗牌插件配置已更新：scope=%s version=%s 当前牌组=%s", scope, version, self._using_cards)
 
@@ -527,17 +694,19 @@ class TarotsPlugin(MaiBotPlugin):
         "tarot_draw",
         description=(
             "【塔罗占卜专用】当聊天里有人想抽塔罗牌、用塔罗占卜、看运势/吉凶/感情/工作/天气时调用。"
-            "会抽 1~7 张牌、发送牌面图片，并用当前人设给出解读。"
+            "会按牌阵抽 1~7 张牌、发送牌阵布局图，并用当前人设给出解读。"
             "用户没指定牌阵时用「单张」，没指定范围时用「全部」；只是聊到塔罗而没人想抽牌时不要调用。"
         ),
         parameters=[
             ToolParameterInfo(
                 name="formation",
                 param_type=ToolParamType.STRING,
-                description="牌阵名称；用户没说就用「单张」",
+                description=(
+                    "牌阵名称，例如：单张、圣三角、时间之流、四要素、五牌阵、吉普赛十字、马蹄、六芒星；"
+                    "也支持用户自定义牌阵名。用户没说就用「单张」"
+                ),
                 required=False,
                 default=DEFAULT_FORMATION,
-                enum_values=list(FALLBACK_FORMATION_NAMES),
             ),
             ToolParameterInfo(
                 name="card_type",
@@ -580,17 +749,17 @@ class TarotsPlugin(MaiBotPlugin):
             "stop_after_execution": True,
         }
 
-    # ──── 关键词兜底 ────
+    # ──── 关键词兜底 / 追问 / 每日一牌 ────
 
     @HookHandler(
         hook="chat.receive.after_process",
         name="tarots_keyword_trigger",
-        description="检测到「塔罗/占卜 + 抽/看/问…」的请求时直接抽牌",
+        description="检测到塔罗请求、占卜追问或每日一牌时接管处理",
         mode=HookMode.BLOCKING,
         order=HookOrder.EARLY,
     )
     async def handle_keyword_trigger(self, **kwargs: Any) -> dict[str, str] | None:
-        """关键词命中时抽牌并中断下游处理；失败则放行。"""
+        """命中追问 / 每日一牌 / 塔罗请求时处理并中断下游；失败则放行。"""
 
         if not self.config.components.enable_tarots or not self.config.adjustment.enable_keyword_fallback:
             return None
@@ -598,23 +767,34 @@ class TarotsPlugin(MaiBotPlugin):
         if not isinstance(message, dict):
             return None
         raw_text = self._message_text(message)
-        if not looks_like_tarot_request(raw_text):
-            return None
         stream_id = str(message.get("session_id") or "").strip()
-        if not stream_id:
+        if not stream_id or not raw_text:
             return None
 
+        if not raw_text.startswith("/"):
+            followup = self._match_followup(stream_id, raw_text)
+            if followup is not None:
+                self.ctx.logger.info("塔罗追问触发：stream_id=%s", stream_id)
+                ok = await self._handle_followup(stream_id, raw_text, followup)
+                return {"action": "abort"} if ok else None
+            if self._looks_like_daily(raw_text):
+                self.ctx.logger.info("每日一牌触发：stream_id=%s", stream_id)
+                ok = await self._daily_draw(stream_id, str(message.get("user_id") or ""))
+                return {"action": "abort"} if ok else None
+
+        if not looks_like_tarot_request(raw_text):
+            return None
         formation = parse_formation_from_text(raw_text, self._formations)
         card_type = parse_card_type_from_text(raw_text)
         self.ctx.logger.info("塔罗关键词触发：formation=%s card_type=%s", formation, card_type)
         ok = await self._execute_draw(stream_id, formation, card_type, raw_text)
         return {"action": "abort"} if ok else None
 
-    # ──── 管理指令 ────
+    # ──── 指令 ────
 
     @Command(
         "tarots_command",
-        description="/tarots list | /tarots switch <牌组> | /tarots allow <牌组> | /tarots lock <牌组> | /tarots cache（管理员）",
+        description="/tarots daily（所有人）｜ list / switch / allow / lock / cache（管理员）",
         pattern=_TAROTS_COMMAND_PATTERN,
     )
     async def handle_tarots_command(self, **kwargs: Any) -> tuple[bool, str, int]:
@@ -628,11 +808,13 @@ class TarotsPlugin(MaiBotPlugin):
 
         if not self.config.components.enable_commands:
             return False, "塔罗插件指令已在配置中关闭", 1
-        if not self._is_admin(user_id):
+        # /tarots daily 对所有人开放，其余指令仅管理员可用
+        if action != "daily" and not self._is_admin(user_id):
             message = "🔒 权限不足：请让管理员把你的 QQ 号加入插件配置的 [permissions] admin_users。"
             await self._reply_text(stream_id, message)
             return False, message, 1
 
+        skip_send = False
         if action == "list":
             message = self._deck_list_text()
         elif action == "switch":
@@ -643,15 +825,38 @@ class TarotsPlugin(MaiBotPlugin):
             message = await self._lock_deck(value)
         elif action == "cache":
             message = await self._cache_all_images(stream_id)
+        elif action == "daily":
+            ok = await self._daily_draw(stream_id, user_id)
+            message = "🎴 今日一牌已发送。" if ok else "⚠️ 今日一牌没发出去，稍后再试。"
+            skip_send = ok
         else:
-            message = "用法：/tarots list｜switch <牌组>｜allow <牌组>｜lock <牌组>｜cache"
-        await self._reply_text(stream_id, message)
+            message = "用法：/tarots daily｜list｜switch <牌组>｜allow <牌组>｜lock <牌组>｜cache"
+
+        if not skip_send:
+            await self._reply_text(stream_id, message)
+        if action == "list":
+            await self._send_deck_thumbnail(stream_id)
         return True, message, 1
 
     # ──── 抽牌流程 ────
 
-    async def _execute_draw(self, stream_id: str, formation_name: str, card_type: str, question: str) -> bool:
-        """完整抽牌：校验 → 抽牌 → 发图 → 原始文本 → 人设解读。"""
+    def _reload_formations(self) -> None:
+        """内置牌阵 + data 目录自定义牌阵（需重启或配置更新生效）。"""
+
+        builtin = load_formations()
+        custom = load_custom_formations(self.ctx.paths.data_dir)
+        self._formations = {**builtin, **custom}
+
+    async def _execute_draw(
+        self,
+        stream_id: str,
+        formation_name: str,
+        card_type: str,
+        question: str,
+        seed: str | None = None,
+        mode: str = "normal",
+    ) -> bool:
+        """完整抽牌：校验 → 抽牌 → 布局图/牌面 → 原始文本 → 人设解读。"""
 
         deck = self._deck
         if deck is None:
@@ -666,22 +871,22 @@ class TarotsPlugin(MaiBotPlugin):
         if not valid_ids:
             await self._reply_text(stream_id, f"⚠️ 当前牌组没有「{card_type}」范围内的牌。")
             return False
+        rng = random.Random(seed) if seed else random
         cards_num = min(formation["cards_num"], len(valid_ids))
-        selected_ids = random.sample(valid_ids, cards_num)
+        selected_ids = rng.sample(valid_ids, cards_num)
         cards = [
-            (card_id, random.random() < 0.5 if formation["is_cut"] else False)
+            (card_id, rng.random() < 0.5 if formation["is_cut"] else False)
             for card_id in selected_ids
         ]
+        positions = formation.get("represent") or []
 
+        images: list[bytes | None] = []
         image_failures: list[str] = []
         for card_id, is_reversed in cards:
             image_bytes = await self._get_card_image(card_id, is_reversed)
+            images.append(image_bytes)
             if image_bytes is None:
-                card_name = str(deck["cards"][card_id].get("name") or card_id)
-                image_failures.append(card_name)
-                continue
-            await self._send_image(image_bytes, stream_id)
-            await asyncio.sleep(0.2)
+                image_failures.append(str(deck["cards"][card_id].get("name") or card_id))
 
         if image_failures:
             if self.config.adjustment.strict_images:
@@ -693,24 +898,142 @@ class TarotsPlugin(MaiBotPlugin):
                 return False
             self.ctx.logger.warning("卡面缺失，降级为纯文字：%s", image_failures)
 
+        entries = [
+            (
+                image_bytes,
+                str(deck["cards"][card_id].get("name") or card_id),
+                positions[index] if index < len(positions) else f"位置{index + 1}",
+            )
+            for index, ((card_id, _), image_bytes) in enumerate(zip(cards, images))
+            if image_bytes is not None
+        ]
+        composite = None
+        if self.config.adjustment.layout_image and len(entries) == len(cards) and entries:
+            composite = compose_spread_image(formation_name, entries)
+        if composite is not None:
+            await self._send_image(composite, stream_id)
+        else:
+            for image_bytes in images:
+                if image_bytes is not None:
+                    await self._send_image(image_bytes, stream_id)
+                    await asyncio.sleep(0.2)
+
         raw_text = build_result_text(formation_name, self._using_cards, cards, formation, deck)
         if self.config.adjustment.enable_original_text:
             await self._reply_text(stream_id, raw_text)
 
         material = build_persona_material(formation_name, cards, formation, deck, question)
-        persona_text = await self._compose_persona_text(stream_id, material, raw_text)
+        instruction = DAILY_INSTRUCTION if mode == "daily" else None
+        persona_text = await self._compose_persona_text(stream_id, material, raw_text, instruction)
         # 发送只尝试一次：平台回执超时但消息已送达的情况很常见，重发会造成重复发图。
         await self._reply_text(stream_id, persona_text)
+        self._remember_draw(stream_id, formation_name, cards, formation, deck, question, material, raw_text, persona_text)
         return True
 
-    async def _compose_persona_text(self, stream_id: str, material: str, fallback: str) -> str:
+    def _remember_draw(
+        self,
+        stream_id: str,
+        formation_name: str,
+        cards: Sequence[tuple[str, bool]],
+        formation: dict[str, Any],
+        deck: dict[str, Any],
+        question: str,
+        material: str,
+        raw_text: str,
+        persona_text: str,
+    ) -> None:
+        """记录最近一次抽牌，供 10 分钟内的追问使用。"""
+
+        now = time.time()
+        for key in [key for key, value in self._last_draws.items() if now - value["ts"] > LAST_DRAW_TTL]:
+            self._last_draws.pop(key, None)
+        positions = formation.get("represent") or []
+        detail = []
+        for index, (card_id, is_reversed) in enumerate(cards):
+            card = deck["cards"][card_id]
+            info = card.get("info") if isinstance(card.get("info"), dict) else {}
+            description = str(
+                (info.get("reverseDescription") if is_reversed else info.get("description")) or ""
+            )
+            detail.append(
+                {
+                    "position": positions[index] if index < len(positions) else f"位置{index + 1}",
+                    "name": str(card.get("name") or card_id),
+                    "reversed": is_reversed,
+                    "description": description,
+                }
+            )
+        self._last_draws[stream_id] = {
+            "ts": now,
+            "formation": formation_name,
+            "deck": self._using_cards,
+            "question": question,
+            "cards": detail,
+            "material": material,
+            "raw_text": raw_text,
+            "persona_text": persona_text,
+        }
+
+    def _match_followup(self, stream_id: str, text: str) -> dict[str, Any] | None:
+        """判断这句话是不是在追问上一次抽牌。"""
+
+        record = self._last_draws.get(stream_id)
+        if record is None:
+            return None
+        if time.time() - record["ts"] > LAST_DRAW_TTL:
+            self._last_draws.pop(stream_id, None)
+            return None
+        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
+        if not compact or len(compact) > 40:
+            return None
+        return record if any(word in compact for word in FOLLOWUP_WORDS) else None
+
+    async def _handle_followup(self, stream_id: str, text: str, record: dict[str, Any]) -> bool:
+        """基于上一次抽牌回答追问，不重新抽牌。"""
+
+        material = f"{record['material']}\n用户追问：{text}"
+        persona = await self._compose_persona_text(
+            stream_id, material, record["raw_text"], FOLLOWUP_INSTRUCTION
+        )
+        return await self._reply_text(stream_id, persona)
+
+    def _looks_like_daily(self, text: str) -> bool:
+        """判断是否是每日一牌/今日运势请求。"""
+
+        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
+        if not compact or compact.startswith("/"):
+            return False
+        if not any(word in compact for word in DAILY_WORDS):
+            return False
+        return any(word in compact for word in ("塔罗", "占卜", "牌"))
+
+    async def _daily_draw(self, stream_id: str, user_id: str = "") -> bool:
+        """每日一牌：同一天同一用户抽到同一张，可重复查看。"""
+
+        today = date.today().isoformat()
+        seed = f"{today}:{user_id or stream_id}"
+        formation = DEFAULT_FORMATION if DEFAULT_FORMATION in self._formations else next(iter(self._formations), "")
+        if not formation:
+            await self._reply_text(stream_id, "⚠️ 没有可用的牌阵。")
+            return False
+        return await self._execute_draw(
+            stream_id, formation, "全部", f"今日运势（{today}）", seed=seed, mode="daily"
+        )
+
+    async def _compose_persona_text(
+        self,
+        stream_id: str,
+        material: str,
+        fallback: str,
+        instruction: str | None = None,
+    ) -> str:
         """用宿主人设生成解读；失败时退回原始牌面文本。"""
 
         try:
             result = await self.ctx.maisaka.reply.generate(
                 stream_id,
                 reference=material,
-                format_instruction=PERSONA_INSTRUCTION,
+                format_instruction=instruction or PERSONA_INSTRUCTION,
                 timeout_ms=90000,
             )
         except Exception:
@@ -1029,6 +1352,19 @@ class TarotsPlugin(MaiBotPlugin):
     def _is_admin(self, user_id: str) -> bool:
         admins = {str(item).strip() for item in self.config.permissions.admin_users}
         return bool(user_id) and user_id in admins
+
+    async def _send_deck_thumbnail(self, stream_id: str) -> None:
+        """给 /tarots list 附一张当前牌组的预览图。"""
+
+        if not self.config.adjustment.show_deck_thumbnail or self._deck is None:
+            return
+        cards = self._deck["cards"]
+        card_id = "0" if "0" in cards else next(iter(cards), None)
+        if card_id is None:
+            return
+        image = await self._get_card_image(card_id, False)
+        if image is not None:
+            await self._send_image(image, stream_id)
 
     async def _reply_text(self, stream_id: str, text: str) -> bool:
         """发文字；只尝试一次（回执超时不重发，避免重复消息）。"""

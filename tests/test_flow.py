@@ -22,6 +22,10 @@ PLUGIN_ID = "github.a0000xz.maibot-tarots-plugin"
 RUN_TMP_ROOT = Path(__file__).resolve().parent / "_tmp"
 ADMIN_QQ = "10001"
 PERSONA_TEXT = "麦麦用自己的人设说出的解牌"
+# 合法的最小 PNG（1x1），用于替代真实卡面，避免测试联网
+TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
 
 
 def load_plugin_module() -> Any:
@@ -107,6 +111,7 @@ class PluginTestCase(unittest.IsolatedAsyncioTestCase):
         config = plugin.build_default_config()
         config["cards"]["use_cards"] = list(use_cards)
         config["permissions"]["admin_users"] = list(admin)
+        config["adjustment"]["show_deck_thumbnail"] = False
         for section, values in overrides.items():
             config[section].update(values)
         plugin.set_plugin_config(config)
@@ -131,7 +136,7 @@ class ToolTest(PluginTestCase):
         plugin, harness = await self.make_plugin()
         with self.speed_up_sleep(), self.patch_sample(1), \
                 mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
-                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=b"fake-image")):
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
 
         self.assertTrue(result["success"])
@@ -147,10 +152,11 @@ class ToolTest(PluginTestCase):
         plugin, harness = await self.make_plugin()
         with self.speed_up_sleep(), self.patch_sample(7), \
                 mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
-                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=b"fake-image")):
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="六芒星")
         self.assertTrue(result["success"])
-        self.assertEqual(harness.capabilities().count("send.image"), 7)
+        # 默认开启布局合成图：7 张牌只发 1 张合成图
+        self.assertEqual(harness.capabilities().count("send.image"), 1)
 
     async def test_invalid_formation(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -163,7 +169,7 @@ class ToolTest(PluginTestCase):
         plugin, harness = await self.make_plugin(FakeHarness(reply_fail=True))
         with self.speed_up_sleep(), self.patch_sample(1), \
                 mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
-                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=b"fake-image")):
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
         self.assertTrue(result["success"])
         text = harness.args_of("send.text")[0]["text"]
@@ -187,7 +193,7 @@ class KeywordTriggerTest(PluginTestCase):
         plugin, harness = await self.make_plugin()
         with self.speed_up_sleep(), self.patch_sample(1), \
                 mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
-                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=b"fake-image")):
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_keyword_trigger(
                 message={"session_id": "stream-1", "processed_plain_text": "@麦麦 帮我占卜一下明天天气"}
             )
@@ -354,6 +360,89 @@ class LocalImageTest(PluginTestCase):
         with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root):
             plugin, _ = await self.make_plugin(use_cards=("demo",))
             self.assertIsNone(await plugin._ensure_cached_image("0"))
+
+
+class CustomFormationTest(PluginTestCase):
+    """data 目录自定义牌阵。"""
+
+    async def test_custom_formation_loaded(self) -> None:
+        data_dir = self._tmp_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        (data_dir / "formations.json").write_text(
+            json.dumps(
+                {"双牌测试": {"cards_num": 2, "is_cut": False, "represent": [["左手", "右手"]]}},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        plugin, _ = await self.make_plugin()
+        self.assertIn("双牌测试", plugin._formations)
+        self.assertEqual(plugin._formations["双牌测试"]["cards_num"], 2)
+        self.assertTrue(plugin._formations["双牌测试"].get("custom"))
+
+
+class FollowupTest(PluginTestCase):
+    """抽牌后的追问上下文。"""
+
+    async def test_followup_uses_last_draw(self) -> None:
+        plugin, harness = await self.make_plugin()
+        with self.speed_up_sleep(), self.patch_sample(1), \
+                mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
+        self.assertTrue(result["success"])
+        self.assertIn("stream-1", plugin._last_draws)
+
+        result = await plugin.handle_keyword_trigger(
+            message={"session_id": "stream-1", "processed_plain_text": "刚才那张牌什么意思"}
+        )
+        self.assertEqual(result, {"action": "abort"})
+        calls = harness.args_of("maisaka.reply.generate")
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertIn("用户追问", str(calls[-1].get("reference")))
+
+    async def test_followup_without_last_draw_ignored(self) -> None:
+        plugin, harness = await self.make_plugin()
+        result = await plugin.handle_keyword_trigger(
+            message={"session_id": "stream-1", "processed_plain_text": "刚才那张牌什么意思"}
+        )
+        self.assertIsNone(result)
+        self.assertEqual(harness.calls, [])
+
+
+class DailyTest(PluginTestCase):
+    """每日一牌：所有人可用、同一天同一人结果一致。"""
+
+    async def test_daily_draw_deterministic(self) -> None:
+        plugin, harness = await self.make_plugin(admin=(ADMIN_QQ,))
+        with self.speed_up_sleep(), \
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            success1, _, _ = await plugin.handle_tarots_command(
+                stream_id="stream-1", user_id="99999", matched_groups={"action": "daily"}
+            )
+            success2, _, _ = await plugin.handle_tarots_command(
+                stream_id="stream-1", user_id="99999", matched_groups={"action": "daily"}
+            )
+        self.assertTrue(success1)
+        self.assertTrue(success2)
+        images = harness.args_of("send.image")
+        self.assertEqual(len(images), 2)
+        self.assertEqual(images[0], images[1])
+
+
+class ThumbnailTest(PluginTestCase):
+    """牌组列表附带预览图。"""
+
+    async def test_list_sends_thumbnail(self) -> None:
+        plugin, harness = await self.make_plugin(
+            admin=(ADMIN_QQ,), adjustment={"show_deck_thumbnail": True}
+        )
+        with mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            success, _, _ = await plugin.handle_tarots_command(
+                stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "list"}
+            )
+        self.assertTrue(success)
+        self.assertIn("send.image", harness.capabilities())
 
 
 class ConfigTest(PluginTestCase):

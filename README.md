@@ -16,6 +16,11 @@
 - **卡面缓存**：图片只在第一次抽到时下载，之后走本地缓存；支持代理
 - **管理指令**：`/tarots list`、`/tarots switch <牌组>`、`/tarots cache`，仅限管理员 QQ
 - **友好排版**：带 emoji 的牌阵结果 + 逐张牌义
+- **牌阵布局合成图**：把整副牌按牌阵位置拼成一张图再发（也可配置成逐张发送）
+- **自定义牌阵**：往插件 data 目录放一个 `formations.json` 就能加新牌阵，不用改代码
+- **占卜追问**：记住最近一次抽牌 10 分钟，接着问「刚才那张牌什么意思」不用重抽
+- **每日一牌**：`/tarots daily` 同一天同一人抽到同一张，所有人可用
+- **牌组预览图**：`/tarots list` 回复后附带当前牌组的预览牌面
 
 ## 安装
 
@@ -41,6 +46,7 @@
 
 | 指令 | 说明 |
 |------|------|
+| `/tarots daily` | 每日一牌（所有人可用，同一天同一人结果一致） |
 | `/tarots list` | 查看可用牌组、当前牌组和使用状态 |
 | `/tarots switch <牌组名>` | 切换当前牌组（需已启用） |
 | `/tarots allow <牌组名>` | 确认你有使用权后，解锁一套带 🔒 的牌组 |
@@ -63,7 +69,7 @@
 | 马蹄 | 6 | 现状 / 可预知的情况 / 不可预知的情况 / 即将发生的 / 结果 / 问卜者的主观想法 |
 | 六芒星 | 7 | 过去 / 现在 / 对策 / 环境 / 态度 / 预测结果 等 |
 
-> 牌阵定义在 `tarot_jsons/formation.json`，可以自己加。
+> 牌阵定义在 `tarot_jsons/formation.json`，可以自己加；也可以不改仓库，直接在插件 data 目录放 `formations.json` 扩展，见下文「自定义牌阵」。
 
 ## 牌组
 
@@ -108,6 +114,25 @@
 说明：卡牌 ID `0`–`21` 是大阿卡纳，`22`–`77` 是小阿卡纳；`imgUrl` 是相对 `base_url` 的图片路径。
 3. 把新牌组名加进配置 `[cards] use_cards`，然后 `/tarots switch <牌组名>` 或 `/tarots cache`，**不用重启**
 
+## 自定义牌阵（不改代码）
+
+在插件 data 目录（例如 `MaiBot/data/plugins/github.a0000xz.maibot-tarots-plugin/`）放一个 `formations.json`：
+
+```json
+{
+  "我的三连": {
+    "cards_num": 3,
+    "is_cut": true,
+    "represent": [["起因", "经过", "结果"]]
+  }
+}
+```
+
+- `cards_num`：抽几张（1~10）
+- `is_cut`：是否可能抽到逆位
+- `represent`：牌位名称，数量不够会自动补「位置N」
+- 保存后重启插件（或触发一次配置更新）即可用，自然语言和 Tool 都能识别新牌阵；未预置布局的牌阵会自动用网格排版生成布局图
+
 ## 配置
 
 `config.toml` 由 MaiBot 自动生成，不纳入版本库；参考 `config.example.toml`。
@@ -132,6 +157,8 @@ WebUI 的插件设置页按 **「常用 / 抽牌 / 高级」** 三个页签组�
 | `adjustment.enable_keyword_fallback` | `true` | 关键词兜底抽牌 |
 | `adjustment.emoji_enabled` | `true` | 结果用 emoji |
 | `adjustment.strict_images` | `true` | 卡面缺失时中止（false = 纯文字降级） |
+| `adjustment.layout_image` | `true` | 把整副牌阵合成一张布局图发送 |
+| `adjustment.show_deck_thumbnail` | `true` | `/tarots list` 附带当前牌组预览图 |
 | `permissions.admin_users` | `[]` | 管理指令 QQ 白名单 |
 
 ## 常见问题

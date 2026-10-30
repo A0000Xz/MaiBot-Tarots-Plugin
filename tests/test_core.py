@@ -115,6 +115,32 @@ class TextBuildTest(unittest.TestCase):
         with Image.open(io.BytesIO(rotated)) as image:
             self.assertEqual(image.size, (8, 4))
 
+    def test_compose_spread_image(self) -> None:
+        from PIL import Image
+
+        tiny = __import__("base64").b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        )
+        result = PLUGIN.compose_spread_image(
+            "时间之流", [(tiny, "愚者", "过去"), (tiny, "魔术师", "现在"), (tiny, "世界", "未来")]
+        )
+        self.assertIsNotNone(result)
+        with Image.open(io.BytesIO(result)) as image:
+            self.assertGreater(image.width, 600)
+            self.assertGreater(image.height, 400)
+
+    def test_compose_fallback_grid(self) -> None:
+        from PIL import Image
+
+        tiny = __import__("base64").b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        )
+        # 未登记的牌阵名走网格兜底
+        result = PLUGIN.compose_spread_image("我的自定义牌阵", [(tiny, "愚者", "位置1"), (tiny, "魔术师", "位置2")])
+        self.assertIsNotNone(result)
+        with Image.open(io.BytesIO(result)) as image:
+            self.assertGreaterEqual(image.width, 600)
+
 
 class IntentParseTest(unittest.TestCase):
     """关键词与参数解析。"""

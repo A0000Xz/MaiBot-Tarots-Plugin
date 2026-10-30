@@ -29,6 +29,10 @@ enable_keyword_fallback = true
 emoji_enabled = true
 # 卡面图片缺失时是否中止占卜（false = 降级为纯文字）
 strict_images = true
+# 把整副牌阵合成一张布局图发送（关闭则逐张发送）
+layout_image = true
+# /tarots list 附带当前牌组预览图
+show_deck_thumbnail = true
 
 [permissions]
 # 允许使用 /tarots 指令的 QQ 号（纯数字）
