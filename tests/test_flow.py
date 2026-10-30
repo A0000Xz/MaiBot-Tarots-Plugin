@@ -227,8 +227,10 @@ class CommandTest(PluginTestCase):
             stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "list"}
         )
         self.assertTrue(success)
-        self.assertIn("可用牌组", message)
+        self.assertIn("已启用", message)
         self.assertIn("classical", message)
+        self.assertIn("未启用牌组", message)
+        self.assertIn("allow blackcat", message)
 
     async def test_switch_to_disabled_deck_rejected(self) -> None:
         plugin, harness = await self.make_plugin(admin=(ADMIN_QQ,))
@@ -237,6 +239,7 @@ class CommandTest(PluginTestCase):
         )
         self.assertIn("默认锁定", message)
         self.assertIn("非商业", message)
+        self.assertIn("/tarots allow blackcat", message)
         self.assertEqual(plugin._using_cards, "classical")
 
     async def test_switch_allowed_deck_saves_state(self) -> None:
@@ -259,6 +262,59 @@ class CommandTest(PluginTestCase):
         self.assertIn("缓存完成", message)
 
 
+class AllowLockTest(PluginTestCase):
+    """/tarots allow 与 /tarots lock：自助确认授权与撤销。"""
+
+    async def test_allow_unlocks_deck(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        success, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+        )
+        self.assertTrue(success)
+        self.assertIn("已记录", message)
+        self.assertIn("blackcat", plugin._allowed_decks())
+        state = json.loads((self._tmp_dir / "data" / "state.json").read_text(encoding="utf-8"))
+        self.assertIn("blackcat", state["unlocked_decks"])
+
+    async def test_switch_after_allow(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+        )
+        success, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "blackcat"}
+        )
+        self.assertTrue(success)
+        self.assertIn("已切换", message)
+        self.assertEqual(plugin._using_cards, "blackcat")
+
+    async def test_lock_revokes_unlock(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+        )
+        success, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "lock", "value": "blackcat"}
+        )
+        self.assertTrue(success)
+        self.assertIn("已锁定", message)
+        self.assertNotIn("blackcat", plugin._allowed_decks())
+
+    async def test_allow_unknown_deck(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        _, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "不存在的牌组"}
+        )
+        self.assertIn("找不到", message)
+
+    async def test_lock_default_deck_rejected(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        _, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "lock", "value": "classical"}
+        )
+        self.assertIn("默认启用", message)
+
+
 class ConfigTest(PluginTestCase):
     """配置默认值与配置页 Schema。"""
 
@@ -266,7 +322,7 @@ class ConfigTest(PluginTestCase):
         config = PLUGIN.TarotsPlugin.build_default_config()
         self.assertEqual(config["plugin"]["config_version"], "2.0.0")
         self.assertEqual(config["cards"]["using_cards"], "classical")
-        self.assertEqual(config["cards"]["use_cards"], ["classical"])
+        self.assertEqual(config["cards"]["use_cards"], ["classical", "elaine"])
         self.assertTrue(config["adjustment"]["enable_keyword_fallback"])
         self.assertEqual(config["permissions"]["admin_users"], [])
 

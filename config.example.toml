@@ -18,7 +18,7 @@ proxy_url = ""
 using_cards = "classical"
 # 允许使用的牌组。bilibili（B站幻星集）与 east（东方）涉及第三方角色/二创授权，
 # 默认不启用；确认你有使用权后可以加进这个列表。
-use_cards = ["classical"]
+use_cards = ["classical", "elaine"]
 
 [adjustment]
 # 额外发送未经人设解读的原始牌面文本

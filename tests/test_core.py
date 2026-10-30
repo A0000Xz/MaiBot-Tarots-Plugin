@@ -49,9 +49,17 @@ class FormationAndDeckTest(unittest.TestCase):
 
     def test_available_decks(self) -> None:
         decks = PLUGIN.available_deck_ids()
-        for expected in ("bilibili", "classical", "east", "blackcat"):
+        for expected in ("bilibili", "classical", "east", "blackcat", "elaine"):
             self.assertIn(expected, decks)
         self.assertIsNone(PLUGIN.load_deck("不存在的牌组"))
+
+    def test_elaine_deck(self) -> None:
+        deck = PLUGIN.load_deck("elaine")
+        self.assertIsNotNone(deck)
+        self.assertEqual(len(deck["cards"]), 78)
+        self.assertEqual(deck["cards"]["22"]["info"]["imgUrl"], "cards/cuac.jpg")
+        self.assertEqual(deck["cards"]["77"]["info"]["imgUrl"], "cards/waki.jpg")
+        self.assertEqual(deck["cards"]["50"]["info"]["imgUrl"], "cards/swac.jpg")
 
     def test_locked_decks_have_notice(self) -> None:
         for deck_id in ("bilibili", "east", "blackcat"):

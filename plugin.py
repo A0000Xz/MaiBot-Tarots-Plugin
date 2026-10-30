@@ -63,7 +63,7 @@ SEND_RETRY_DELAY = 1.0
 _TAROT_WORDS = ("塔罗", "占卜")
 _DRAW_INTENT_WORDS = ("抽", "占卜", "卜", "算", "测", "看", "问", "求", "来", "帮")
 _MENTION_PATTERN = re.compile(r"@[^\s@]+")
-_TAROTS_COMMAND_PATTERN = r"/tarots\s+(?P<action>cache|switch|list)(?:\s+(?P<value>\S+))?"
+_TAROTS_COMMAND_PATTERN = r"/tarots\s+(?P<action>cache|switch|list|allow|lock)(?:\s+(?P<value>\S+))?"
 
 PERSONA_INSTRUCTION = (
     "请用你平时说话的语气，为用户解读下面的塔罗牌结果："
@@ -332,7 +332,7 @@ _UI_TABS: dict[str, tuple[str, tuple[str, ...]]] = {
 
 _UI_HINTS: dict[str, str] = {
     "cards.using_cards": "默认牌组名，例如 classical（公版韦特）。运行中可用 /tarots switch 切换，切换结果会记住。",
-    "cards.use_cards": "允许使用的牌组清单。classical 为公版韦特；bilibili（2233娘）和 east（东方）默认不启用，确认你有使用权后再加。",
+    "cards.use_cards": "允许使用的牌组清单。classical / elaine 为公版韦特；bilibili、east、blackcat 默认不启用，确认使用权后可用 /tarots allow 临时解锁。",
     "permissions.admin_users": "填纯数字 QQ 号；留空则没人能用 /tarots 指令（抽牌不受影响）。",
     "components.enable_tarots": "关掉后自然语言/关键词都不会抽牌，只剩管理指令。",
     "components.enable_commands": "关掉后 /tarots 指令不可用。",
@@ -428,8 +428,8 @@ class CardsSection(PluginConfigBase):
 
     using_cards: str = Field(default="classical", description="默认使用的牌组名（可用 /tarots switch 切换）")
     use_cards: list[str] = Field(
-        default_factory=lambda: ["classical"],
-        description="允许使用的牌组名列表；不在列表里的牌组即使存在也不可用",
+        default_factory=lambda: ["classical", "elaine"],
+        description="允许使用的牌组名列表；不在列表里的牌组即使存在也不可用（可用 /tarots allow 临时解锁）",
     )
 
 
@@ -483,6 +483,7 @@ class TarotsPlugin(MaiBotPlugin):
         self._formations: dict[str, dict[str, Any]] = {}
         self._deck: dict[str, Any] | None = None
         self._using_cards: str = ""
+        self._unlocked_decks: list[str] = []
         self._image_cache: dict[tuple[str, str], bytes] = {}
 
     @classmethod
@@ -498,8 +499,7 @@ class TarotsPlugin(MaiBotPlugin):
 
         self.ctx.paths.data_dir.mkdir(parents=True, exist_ok=True)
         self._formations = load_formations()
-        self._using_cards = self._resolve_using_cards()
-        self._deck = load_deck(self._using_cards) if self._using_cards else None
+        self._apply_deck_state()
         self.ctx.logger.info(
             "塔罗牌插件已加载：%d 种牌阵，当前牌组=%s，可用牌组=%s，管理员=%d",
             len(self._formations),
@@ -518,8 +518,7 @@ class TarotsPlugin(MaiBotPlugin):
         """配置热更新后重载牌组。"""
 
         del config_data
-        self._using_cards = self._resolve_using_cards()
-        self._deck = load_deck(self._using_cards) if self._using_cards else None
+        self._apply_deck_state()
         self.ctx.logger.info("塔罗牌插件配置已更新：scope=%s version=%s 当前牌组=%s", scope, version, self._using_cards)
 
     # ──── 抽牌入口：Tool ────
@@ -615,7 +614,7 @@ class TarotsPlugin(MaiBotPlugin):
 
     @Command(
         "tarots_command",
-        description="/tarots list | /tarots switch <牌组> | /tarots cache（管理员）",
+        description="/tarots list | /tarots switch <牌组> | /tarots allow <牌组> | /tarots lock <牌组> | /tarots cache（管理员）",
         pattern=_TAROTS_COMMAND_PATTERN,
     )
     async def handle_tarots_command(self, **kwargs: Any) -> tuple[bool, str, int]:
@@ -638,10 +637,14 @@ class TarotsPlugin(MaiBotPlugin):
             message = self._deck_list_text()
         elif action == "switch":
             message = await self._switch_deck(value)
+        elif action == "allow":
+            message = await self._allow_deck(value)
+        elif action == "lock":
+            message = await self._lock_deck(value)
         elif action == "cache":
             message = await self._cache_all_images(stream_id)
         else:
-            message = "用法：/tarots list | /tarots switch <牌组> | /tarots cache"
+            message = "用法：/tarots list｜switch <牌组>｜allow <牌组>｜lock <牌组>｜cache"
         await self._reply_text(stream_id, message)
         return True, message, 1
 
@@ -820,13 +823,31 @@ class TarotsPlugin(MaiBotPlugin):
         state_path = self.ctx.paths.data_dir / "state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
-            json.dumps({"using_cards": self._using_cards}, ensure_ascii=False, indent=2),
+            json.dumps(
+                {"using_cards": self._using_cards, "unlocked_decks": self._unlocked_decks},
+                ensure_ascii=False,
+                indent=2,
+            ),
             encoding="utf-8",
         )
 
+    def _apply_deck_state(self) -> None:
+        """从 state.json 恢复当前牌组与已自助解锁的牌组。"""
+
+        state = self._read_state()
+        unlocked = state.get("unlocked_decks")
+        self._unlocked_decks = [str(item).strip() for item in unlocked] if isinstance(unlocked, list) else []
+        self._using_cards = self._resolve_using_cards()
+        self._deck = load_deck(self._using_cards) if self._using_cards else None
+
     def _allowed_decks(self) -> list[str]:
+        """当前可用的牌组 = 配置里启用的 + 管理员自助确认解锁的。"""
+
         available = set(available_deck_ids())
-        allowed = [deck for deck in self.config.cards.use_cards if deck in available]
+        allowed: list[str] = []
+        for deck_id in [*self.config.cards.use_cards, *self._unlocked_decks]:
+            if deck_id in available and deck_id not in allowed:
+                allowed.append(deck_id)
         return allowed
 
     def _resolve_using_cards(self) -> str:
@@ -847,27 +868,81 @@ class TarotsPlugin(MaiBotPlugin):
         return str(deck["meta"].get("notice") or "").strip()
 
     def _deck_list_text(self) -> str:
-        allowed = set(self._allowed_decks())
+        allowed = self._allowed_decks()
         available = available_deck_ids()
-        lines = [f"{TAROT_ICON} 可用牌组（{len(allowed)} 套已启用）"]
-        for deck_id in available:
+        ordered = [deck for deck in allowed]
+        if self._using_cards in ordered:
+            ordered.remove(self._using_cards)
+            ordered.insert(0, self._using_cards)
+        locked = [deck for deck in available if deck not in allowed]
+
+        blocks: list[str] = [f"{TAROT_ICON} 塔罗牌组（{len(allowed)} 套已启用）", "━━━━━━━━━━━━━━"]
+        for deck_id in ordered:
             deck = load_deck(deck_id)
             if deck is None:
                 continue
             name = deck_display_name(deck_id, deck)
-            notice = self._deck_notice(deck)
-            if deck_id == self._using_cards:
-                lines.append(f"✅ {name} ← 当前")
-            elif deck_id in allowed:
-                lines.append(f"⚪ {name}")
-            else:
-                lines.append(f"🔒 {name}（未启用）")
+            mark = "✅" if deck_id == self._using_cards else "⚪"
+            suffix = " ← 当前" if deck_id == self._using_cards else ""
+            blocks.append(f"{mark} {name}{suffix}")
+
+        if locked:
+            blocks.append("")
+            blocks.append(f"🔒 未启用牌组（{len(locked)} 套）")
+            blocks.append("━━━━━━━━━━━━━━")
+            for deck_id in locked:
+                deck = load_deck(deck_id)
+                if deck is None:
+                    continue
+                lines = [f"🔒 {deck_display_name(deck_id, deck)}"]
+                notice = self._deck_notice(deck)
                 if notice:
                     lines.append(f"   ⚠️ {notice}")
-        lines.append("")
-        lines.append("切换：/tarots switch <牌组名>")
-        lines.append("缓存牌面：/tarots cache")
+                lines.append(f"   ↳ 确认你有使用权：/tarots allow {deck_id}")
+                blocks.append("\n".join(lines))
+
+        blocks.append("")
+        blocks.append("切换：/tarots switch <牌组名>")
+        blocks.append("缓存：/tarots cache ｜ 撤销解锁：/tarots lock <牌组名>")
+        return "\n".join(blocks)
+
+    async def _allow_deck(self, deck_id: str) -> str:
+        """管理员自助确认授权后启用带锁牌组（插件无法验证授权真实性）。"""
+
+        if not deck_id:
+            return "用法：/tarots allow <牌组名>，先用 /tarots list 查看带锁牌组。"
+        if deck_id not in available_deck_ids():
+            return f"⚠️ 找不到牌组「{deck_id}」。"
+        deck = load_deck(deck_id)
+        notice = self._deck_notice(deck) if deck is not None else ""
+        if deck_id in self._allowed_decks():
+            return f"✅ 「{deck_id}」已经可用，直接 /tarots switch {deck_id} 即可。"
+        if deck_id not in self._unlocked_decks:
+            self._unlocked_decks.append(deck_id)
+            self._save_state()
+        lines = [f"✅ 已记录：操作者确认「{deck_id}」有权使用（非商业允许场景 / 已获授权）。"]
+        if notice:
+            lines.append(f"📌 版权提示：{notice}")
+        lines.append(f"现在可以：/tarots switch {deck_id} 或 /tarots cache")
+        lines.append("（插件无法验证授权真实性，此确认仅代表操作者自行确认；如需撤销用 /tarots lock）")
         return "\n".join(lines)
+
+    async def _lock_deck(self, deck_id: str) -> str:
+        """撤销自助解锁。"""
+
+        if not deck_id:
+            return "用法：/tarots lock <牌组名>"
+        if deck_id in self.config.cards.use_cards:
+            return f"「{deck_id}」属于配置 [cards] use_cards 里的默认启用牌组，请改配置来关闭，不能在这里锁定。"
+        if deck_id not in self._unlocked_decks:
+            return f"「{deck_id}」当前没有解锁，无需锁定。"
+        self._unlocked_decks.remove(deck_id)
+        if self._using_cards == deck_id:
+            allowed = self._allowed_decks()
+            self._using_cards = allowed[0] if allowed else ""
+            self._deck = load_deck(self._using_cards) if self._using_cards else None
+        self._save_state()
+        return f"🔒 已锁定「{deck_id}」，如需再次启用请重新 /tarots allow {deck_id}。"
 
     async def _switch_deck(self, deck_id: str) -> str:
         if not deck_id:
@@ -875,10 +950,10 @@ class TarotsPlugin(MaiBotPlugin):
         if deck_id not in self._allowed_decks():
             deck = load_deck(deck_id)
             notice = self._deck_notice(deck) if deck is not None else ""
-            reason = notice or "它不存在，或者没在配置 [cards] use_cards 里启用。"
+            reason = notice or "它不存在，或者还没启用。"
             return (
                 f"🔒 牌组「{deck_id}」默认锁定：{reason}\n"
-                f'确认你有使用权后，把 "{deck_id}" 加进配置 [cards] use_cards，再执行 /tarots switch {deck_id}。'
+                f"确认你有使用权后，先执行 /tarots allow {deck_id}，再 /tarots switch {deck_id}。"
             )
         deck = load_deck(deck_id)
         if deck is None:
