@@ -332,7 +332,7 @@ _UI_TABS: dict[str, tuple[str, tuple[str, ...]]] = {
 
 _UI_HINTS: dict[str, str] = {
     "cards.using_cards": "默认牌组名，例如 classical（公版韦特）。运行中可用 /tarots switch 切换，切换结果会记住。",
-    "cards.use_cards": "允许使用的牌组清单。classical / elaine 为公版韦特；bilibili、east、blackcat 默认不启用，确认使用权后可用 /tarots allow 临时解锁。",
+    "cards.use_cards": "允许使用的牌组清单。classical / elaine 为公版韦特；bilibili、east 默认不启用，确认使用权后可用 /tarots allow 临时解锁。",
     "permissions.admin_users": "填纯数字 QQ 号；留空则没人能用 /tarots 指令（抽牌不受影响）。",
     "components.enable_tarots": "关掉后自然语言/关键词都不会抽牌，只剩管理指令。",
     "components.enable_commands": "关掉后 /tarots 指令不可用。",

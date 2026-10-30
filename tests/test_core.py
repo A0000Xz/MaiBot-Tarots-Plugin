@@ -49,7 +49,7 @@ class FormationAndDeckTest(unittest.TestCase):
 
     def test_available_decks(self) -> None:
         decks = PLUGIN.available_deck_ids()
-        for expected in ("bilibili", "classical", "east", "blackcat", "elaine"):
+        for expected in ("bilibili", "classical", "east", "elaine"):
             self.assertIn(expected, decks)
         self.assertIsNone(PLUGIN.load_deck("不存在的牌组"))
 
@@ -62,30 +62,10 @@ class FormationAndDeckTest(unittest.TestCase):
         self.assertEqual(deck["cards"]["50"]["info"]["imgUrl"], "cards/swac.jpg")
 
     def test_locked_decks_have_notice(self) -> None:
-        for deck_id in ("bilibili", "east", "blackcat"):
+        for deck_id in ("bilibili", "east"):
             deck = PLUGIN.load_deck(deck_id)
             self.assertIsNotNone(deck)
             self.assertTrue(str(deck["meta"].get("notice") or "").strip(), deck_id)
-
-    def test_blackcat_deck(self) -> None:
-        deck = PLUGIN.load_deck("blackcat")
-        self.assertIsNotNone(deck)
-        self.assertEqual(len(deck["cards"]), 22)
-        self.assertTrue(deck["meta"].get("local_images"))
-        self.assertEqual(deck["cards"]["0"]["info"]["imgUrl"], "images/m00.png")
-        self.assertEqual(PLUGIN.deck_card_range(deck, "大阿卡纳"), list(PLUGIN.MAJOR_CARD_IDS))
-        self.assertEqual(PLUGIN.deck_card_range(deck, "小阿卡纳"), [])
-        # 22 张原创卡面都要在仓库里
-        image_dir = PLUGIN.TAROT_JSON_DIR / "blackcat" / "images"
-        for card_id in range(22):
-            self.assertTrue((image_dir / f"m{card_id:02d}.png").is_file(), card_id)
-
-    def test_classical_deck(self) -> None:
-        deck = PLUGIN.load_deck("classical")
-        self.assertIsNotNone(deck)
-        self.assertEqual(len(deck["cards"]), 78)
-        self.assertTrue(str(deck["meta"].get("base_url") or "").startswith("http"))
-        self.assertIn("愚者", str(deck["cards"]["0"].get("name")))
 
     def test_deck_card_range(self) -> None:
         classical = PLUGIN.load_deck("classical")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import json
 import shutil
@@ -230,16 +231,15 @@ class CommandTest(PluginTestCase):
         self.assertIn("已启用", message)
         self.assertIn("classical", message)
         self.assertIn("未启用牌组", message)
-        self.assertIn("allow blackcat", message)
+        self.assertIn("allow bilibili", message)
 
     async def test_switch_to_disabled_deck_rejected(self) -> None:
         plugin, harness = await self.make_plugin(admin=(ADMIN_QQ,))
         success, message, _ = await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "bilibili"}
         )
         self.assertIn("默认锁定", message)
-        self.assertIn("原创", message)
-        self.assertIn("/tarots allow blackcat", message)
+        self.assertIn("/tarots allow bilibili", message)
         self.assertEqual(plugin._using_cards, "classical")
 
     async def test_switch_allowed_deck_saves_state(self) -> None:
@@ -268,37 +268,37 @@ class AllowLockTest(PluginTestCase):
     async def test_allow_unlocks_deck(self) -> None:
         plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
         success, message, _ = await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "bilibili"}
         )
         self.assertTrue(success)
         self.assertIn("已记录", message)
-        self.assertIn("blackcat", plugin._allowed_decks())
+        self.assertIn("bilibili", plugin._allowed_decks())
         state = json.loads((self._tmp_dir / "data" / "state.json").read_text(encoding="utf-8"))
-        self.assertIn("blackcat", state["unlocked_decks"])
+        self.assertIn("bilibili", state["unlocked_decks"])
 
     async def test_switch_after_allow(self) -> None:
         plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
         await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "bilibili"}
         )
         success, message, _ = await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "bilibili"}
         )
         self.assertTrue(success)
         self.assertIn("已切换", message)
-        self.assertEqual(plugin._using_cards, "blackcat")
+        self.assertEqual(plugin._using_cards, "bilibili")
 
     async def test_lock_revokes_unlock(self) -> None:
         plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
         await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "allow", "value": "bilibili"}
         )
         success, message, _ = await plugin.handle_tarots_command(
-            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "lock", "value": "blackcat"}
+            stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "lock", "value": "bilibili"}
         )
         self.assertTrue(success)
         self.assertIn("已锁定", message)
-        self.assertNotIn("blackcat", plugin._allowed_decks())
+        self.assertNotIn("bilibili", plugin._allowed_decks())
 
     async def test_allow_unknown_deck(self) -> None:
         plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
@@ -316,15 +316,44 @@ class AllowLockTest(PluginTestCase):
 
 
 class LocalImageTest(PluginTestCase):
-    """仓库内置图源的牌组（blackcat 原创卡面）不联网。"""
+    """仓库内置图源（local_images）的牌组不联网，直接读本地图片。"""
 
-    async def test_blackcat_local_images(self) -> None:
-        plugin, _ = await self.make_plugin(use_cards=("blackcat",))
-        self.assertEqual(plugin._using_cards, "blackcat")
-        data = await plugin._ensure_cached_image("0")
-        self.assertIsNotNone(data)
-        self.assertTrue(data.startswith(b"\x89PNG"))
+    PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+    def _make_demo_deck(self, img_url: str) -> Any:
+        tarot_root = self._tmp_dir / "tarot_jsons"
+        deck_dir = tarot_root / "demo"
+        (deck_dir / "images").mkdir(parents=True)
+        (deck_dir / "images" / "m00.png").write_bytes(base64.b64decode(self.PNG))
+        (deck_dir / "tarots.json").write_text(
+            json.dumps(
+                {
+                    "_meta": {"card_types": "大阿卡纳", "total_cards": 1, "local_images": True},
+                    "0": {
+                        "name": "愚者",
+                        "info": {"description": "正位", "reverseDescription": "逆位", "imgUrl": img_url},
+                    },
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return tarot_root
+
+    async def test_local_images_support(self) -> None:
+        tarot_root = self._make_demo_deck("images/m00.png")
+        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root):
+            plugin, _ = await self.make_plugin(use_cards=("demo",))
+            self.assertEqual(plugin._using_cards, "demo")
+            data = await plugin._ensure_cached_image("0")
+        self.assertEqual(data, base64.b64decode(self.PNG))
         self.assertFalse((self._tmp_dir / "data" / "tarots_cache").exists())
+
+    async def test_local_image_traversal_blocked(self) -> None:
+        tarot_root = self._make_demo_deck("../../../secret.png")
+        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root):
+            plugin, _ = await self.make_plugin(use_cards=("demo",))
+            self.assertIsNone(await plugin._ensure_cached_image("0"))
 
 
 class ConfigTest(PluginTestCase):
