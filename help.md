@@ -34,6 +34,14 @@
 
 ## 自定义牌阵（不用改代码）
 
+最快的办法是在群里（管理员）执行：
+
+```
+/tarots newformation 我的三连 3 起因|经过|结果
+```
+
+会写入 data 目录的 `formations.json` 并即时生效。也可以手写下面的 JSON。
+
 在插件 data 目录放 `formations.json`：
 
 ```json

@@ -459,6 +459,62 @@ class FormationsCommandTest(PluginTestCase):
         self.assertIn("身心灵", message)
 
 
+class NewFormationTest(PluginTestCase):
+    """/tarots newformation：管理员在群里直接建牌阵。"""
+
+    async def test_admin_creates_formation(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        success, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1",
+            user_id=ADMIN_QQ,
+            matched_groups={"action": "newformation", "value": "群友三连", "rest": "3 起因|经过|结果"},
+        )
+        self.assertTrue(success)
+        self.assertIn("已新增牌阵", message)
+        self.assertIn("群友三连", plugin._formations)
+        self.assertEqual(plugin._formations["群友三连"]["cards_num"], 3)
+        self.assertEqual(plugin._formations["群友三连"]["represent"], ["起因", "经过", "结果"])
+        saved = json.loads((self._tmp_dir / "data" / "formations.json").read_text(encoding="utf-8"))
+        self.assertIn("群友三连", saved)
+
+    async def test_positions_auto_padded(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        await plugin.handle_tarots_command(
+            stream_id="stream-1",
+            user_id=ADMIN_QQ,
+            matched_groups={"action": "newformation", "value": "双牌", "rest": "2 左手"},
+        )
+        self.assertEqual(plugin._formations["双牌"]["represent"], ["左手", "位置2"])
+
+    async def test_builtin_name_rejected(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        _, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1",
+            user_id=ADMIN_QQ,
+            matched_groups={"action": "newformation", "value": "时间之流", "rest": "3 a|b|c"},
+        )
+        self.assertIn("内置牌阵", message)
+
+    async def test_invalid_count_rejected(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        _, message, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1",
+            user_id=ADMIN_QQ,
+            matched_groups={"action": "newformation", "value": "太多牌", "rest": "99 a|b"},
+        )
+        self.assertIn("1~10", message)
+
+    async def test_non_admin_denied(self) -> None:
+        plugin, _ = await self.make_plugin(admin=(ADMIN_QQ,))
+        success, _, _ = await plugin.handle_tarots_command(
+            stream_id="stream-1",
+            user_id="99999",
+            matched_groups={"action": "newformation", "value": "群友三连", "rest": "3 a|b|c"},
+        )
+        self.assertFalse(success)
+        self.assertNotIn("群友三连", plugin._formations)
+
+
 class ConfigTest(PluginTestCase):
     """配置默认值与配置页 Schema。"""
 

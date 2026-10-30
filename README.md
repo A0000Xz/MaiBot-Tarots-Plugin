@@ -49,6 +49,7 @@
 |------|------|
 | `/tarots daily` | 每日一牌（所有人可用，同一天同一人结果一致） |
 | `/tarots formations` | 查看全部牌阵（所有人可用，含自定义牌阵） |
+| `/tarots newformation <名称> <张数> <位置1\|位置2>` | 管理员在群里直接新增牌阵，即时生效 |
 | `/tarots list` | 查看可用牌组、当前牌组和使用状态 |
 | `/tarots switch <牌组名>` | 切换当前牌组（需已启用） |
 | `/tarots allow <牌组名>` | 确认你有使用权后，解锁一套带 🔒 的牌组 |
@@ -117,6 +118,11 @@
 3. 把新牌组名加进配置 `[cards] use_cards`，然后 `/tarots switch <牌组名>` 或 `/tarots cache`，**不用重启**
 
 ## 自定义牌阵（不改代码）
+
+两种方式：
+
+1. **群里直接建**（管理员）：`/tarots newformation 我的三连 3 起因|经过|结果`，写入 data 目录的 `formations.json` 并即时生效
+2. **手写 JSON**：在插件 data 目录放 `formations.json`，重启插件或触发配置更新后生效
 
 在插件 data 目录（例如 `MaiBot/data/plugins/github.a0000xz.maibot-tarots-plugin/`）放一个 `formations.json`：
 

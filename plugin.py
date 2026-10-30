@@ -83,7 +83,8 @@ _TAROT_WORDS = ("塔罗", "占卜")
 _DRAW_INTENT_WORDS = ("抽", "占卜", "卜", "算", "测", "看", "问", "求", "来", "帮")
 _MENTION_PATTERN = re.compile(r"@[^\s@]+")
 _TAROTS_COMMAND_PATTERN = (
-    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations)(?:\s+(?P<value>\S+))?"
+    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations|newformation)"
+    r"(?:\s+(?P<value>\S+))?(?:\s+(?P<rest>.*))?"
 )
 
 PERSONA_INSTRUCTION = (
@@ -831,7 +832,7 @@ class TarotsPlugin(MaiBotPlugin):
 
     @Command(
         "tarots_command",
-        description="/tarots daily | formations（所有人）｜ list / switch / allow / lock / cache（管理员）",
+        description="/tarots daily | formations（所有人）｜ list / switch / allow / lock / cache / newformation（管理员）",
         pattern=_TAROTS_COMMAND_PATTERN,
     )
     async def handle_tarots_command(self, **kwargs: Any) -> tuple[bool, str, int]:
@@ -842,6 +843,7 @@ class TarotsPlugin(MaiBotPlugin):
         matched_groups = kwargs.get("matched_groups")
         action = str(matched_groups.get("action") or "").strip() if isinstance(matched_groups, dict) else ""
         value = str(matched_groups.get("value") or "").strip() if isinstance(matched_groups, dict) else ""
+        rest = str(matched_groups.get("rest") or "").strip() if isinstance(matched_groups, dict) else ""
 
         if not self.config.components.enable_commands:
             return False, "塔罗插件指令已在配置中关闭", 1
@@ -856,6 +858,8 @@ class TarotsPlugin(MaiBotPlugin):
             message = self._deck_list_text()
         elif action == "formations":
             message = self._formations_text()
+        elif action == "newformation":
+            message = await self._new_formation(value, rest)
         elif action == "switch":
             message = await self._switch_deck(value)
         elif action == "allow":
@@ -1307,6 +1311,40 @@ class TarotsPlugin(MaiBotPlugin):
         blocks.append("切换：/tarots switch <牌组名>")
         blocks.append("缓存：/tarots cache ｜ 撤销解锁：/tarots lock <牌组名>")
         return "\n".join(blocks)
+
+    async def _new_formation(self, name: str, rest: str) -> str:
+        """在群里直接新增自定义牌阵（写入 data/formations.json 并即时生效）。"""
+
+        usage = "用法：/tarots newformation <牌阵名> <张数> <位置1|位置2|…>，例如：/tarots newformation 我的三连 3 起因|经过|结果"
+        if not name:
+            return usage
+        name = name.strip()[:20]
+        if name in load_formations():
+            return f"「{name}」是内置牌阵，不能覆盖；换个名字吧。"
+        parts = rest.split(None, 1)
+        if not parts or not parts[0].isdigit():
+            return usage
+        cards_num = int(parts[0])
+        if not 1 <= cards_num <= 10:
+            return "张数需要在 1~10 之间。"
+        raw_positions = parts[1] if len(parts) > 1 else ""
+        positions = [item.strip() for item in re.split(r"[|｜/,，、;；]", raw_positions) if item.strip()]
+        while len(positions) < cards_num:
+            positions.append(f"位置{len(positions) + 1}")
+        positions = positions[:cards_num]
+
+        path = self.ctx.paths.data_dir / "formations.json"
+        data = load_json(path) or {}
+        data[name] = {"cards_num": cards_num, "is_cut": True, "represent": [positions]}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._reload_formations()
+        self.ctx.logger.info("新增自定义牌阵：%s（%d 张）", name, cards_num)
+        return (
+            f"✅ 已新增牌阵「{name}」（{cards_num} 张）\n"
+            f"牌位：{' / '.join(positions)}\n"
+            f"现在可以直接说「用{name}占卜一下」，或用 /tarots formations 查看。"
+        )
 
     def _formations_text(self) -> str:
         """列出所有可用牌阵（含自定义）。"""
