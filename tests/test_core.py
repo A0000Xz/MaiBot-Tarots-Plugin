@@ -71,8 +71,14 @@ class FormationAndDeckTest(unittest.TestCase):
         deck = PLUGIN.load_deck("blackcat")
         self.assertIsNotNone(deck)
         self.assertEqual(len(deck["cards"]), 22)
+        self.assertTrue(deck["meta"].get("local_images"))
+        self.assertEqual(deck["cards"]["0"]["info"]["imgUrl"], "images/m00.png")
         self.assertEqual(PLUGIN.deck_card_range(deck, "大阿卡纳"), list(PLUGIN.MAJOR_CARD_IDS))
         self.assertEqual(PLUGIN.deck_card_range(deck, "小阿卡纳"), [])
+        # 22 张原创卡面都要在仓库里
+        image_dir = PLUGIN.TAROT_JSON_DIR / "blackcat" / "images"
+        for card_id in range(22):
+            self.assertTrue((image_dir / f"m{card_id:02d}.png").is_file(), card_id)
 
     def test_classical_deck(self) -> None:
         deck = PLUGIN.load_deck("classical")

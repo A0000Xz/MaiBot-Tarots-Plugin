@@ -743,6 +743,18 @@ class TarotsPlugin(MaiBotPlugin):
         cached = self._image_cache.get(cache_key)
         if cached is not None:
             return cached
+        if self._uses_local_images():
+            local_path = self._local_image_path(card_id)
+            if local_path is None:
+                self.ctx.logger.warning("本地卡面缺失：deck=%s card=%s", self._using_cards, card_id)
+                return None
+            try:
+                data = local_path.read_bytes()
+            except OSError:
+                self.ctx.logger.warning("本地卡面读取失败：%s", local_path, exc_info=True)
+                return None
+            self._image_cache[cache_key] = data
+            return data
         cache_path = self._cache_path(card_id)
         if cache_path.is_file() and cache_path.stat().st_size > 0:
             try:
@@ -757,6 +769,34 @@ class TarotsPlugin(MaiBotPlugin):
             return None
         self._image_cache[cache_key] = data
         return data
+
+    def _uses_local_images(self) -> bool:
+        """牌组是否直接使用仓库内置的本地卡面（不联网下载）。"""
+
+        deck = self._deck
+        if deck is None:
+            return False
+        value = deck["meta"].get("local_images")
+        return value is True or str(value).strip().lower() == "true"
+
+    def _local_image_path(self, card_id: str) -> Path | None:
+        """解析本地卡面路径，并阻止路径穿越。"""
+
+        deck = self._deck
+        if deck is None:
+            return None
+        card = deck["cards"].get(card_id)
+        if not isinstance(card, dict):
+            return None
+        info = card.get("info") if isinstance(card.get("info"), dict) else {}
+        relative = str(info.get("imgUrl") or "").strip().lstrip("/\\")
+        if not relative:
+            return None
+        base_dir = (TAROT_JSON_DIR / self._using_cards).resolve()
+        path = (base_dir / relative).resolve()
+        if path != base_dir and base_dir not in path.parents:
+            return None
+        return path if path.is_file() else None
 
     def _cache_dir(self) -> Path:
         return self.ctx.paths.data_dir / "tarots_cache" / (self._using_cards or "default")

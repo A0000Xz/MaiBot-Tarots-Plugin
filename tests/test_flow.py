@@ -238,7 +238,7 @@ class CommandTest(PluginTestCase):
             stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "switch", "value": "blackcat"}
         )
         self.assertIn("默认锁定", message)
-        self.assertIn("非商业", message)
+        self.assertIn("原创", message)
         self.assertIn("/tarots allow blackcat", message)
         self.assertEqual(plugin._using_cards, "classical")
 
@@ -313,6 +313,18 @@ class AllowLockTest(PluginTestCase):
             stream_id="stream-1", user_id=ADMIN_QQ, matched_groups={"action": "lock", "value": "classical"}
         )
         self.assertIn("默认启用", message)
+
+
+class LocalImageTest(PluginTestCase):
+    """仓库内置图源的牌组（blackcat 原创卡面）不联网。"""
+
+    async def test_blackcat_local_images(self) -> None:
+        plugin, _ = await self.make_plugin(use_cards=("blackcat",))
+        self.assertEqual(plugin._using_cards, "blackcat")
+        data = await plugin._ensure_cached_image("0")
+        self.assertIsNotNone(data)
+        self.assertTrue(data.startswith(b"\x89PNG"))
+        self.assertFalse((self._tmp_dir / "data" / "tarots_cache").exists())
 
 
 class ConfigTest(PluginTestCase):
