@@ -7,6 +7,7 @@ import importlib.util
 import json
 import shutil
 import sys
+import types
 import unittest
 import uuid
 from pathlib import Path
@@ -29,23 +30,27 @@ TINY_PNG = base64.b64decode(
 
 
 def load_plugin_module() -> Any:
-    cached = sys.modules.get(MODULE_NAME)
+    """按包方式加载插件（plugin.py 通过相对导入引用同目录模块）。"""
+
+    module_key = f"{MODULE_NAME}.plugin"
+    cached = sys.modules.get(module_key)
     if cached is not None:
         return cached
-    spec = importlib.util.spec_from_file_location(
-        MODULE_NAME,
-        PLUGIN_DIR / "plugin.py",
-        submodule_search_locations=[str(PLUGIN_DIR)],
-    )
+    if MODULE_NAME not in sys.modules:
+        package = types.ModuleType(MODULE_NAME)
+        package.__path__ = [str(PLUGIN_DIR)]
+        sys.modules[MODULE_NAME] = package
+    spec = importlib.util.spec_from_file_location(module_key, PLUGIN_DIR / "plugin.py")
     if spec is None or spec.loader is None:
         raise RuntimeError("无法加载塔罗插件模块")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[MODULE_NAME] = module
+    sys.modules[module_key] = module
     spec.loader.exec_module(module)
     return module
 
 
 PLUGIN = load_plugin_module()
+CORE = sys.modules[f"{MODULE_NAME}.tarots_core"]
 
 
 class FakeHarness:
@@ -407,7 +412,8 @@ class LocalImageTest(PluginTestCase):
 
     async def test_local_images_support(self) -> None:
         tarot_root = self._make_demo_deck("images/m00.png")
-        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root):
+        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root), \
+                mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
             plugin, _ = await self.make_plugin(use_cards=("demo",))
             self.assertEqual(plugin._using_cards, "demo")
             data = await plugin._ensure_cached_image("0")
@@ -416,7 +422,8 @@ class LocalImageTest(PluginTestCase):
 
     async def test_local_image_traversal_blocked(self) -> None:
         tarot_root = self._make_demo_deck("../../../secret.png")
-        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root):
+        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root), \
+                mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
             plugin, _ = await self.make_plugin(use_cards=("demo",))
             self.assertIsNone(await plugin._ensure_cached_image("0"))
 
