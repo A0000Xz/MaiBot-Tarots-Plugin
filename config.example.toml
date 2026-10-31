@@ -1,0 +1,43 @@
+[plugin]
+enabled = true
+config_version = "2.0.0"
+
+[components]
+# 抽牌工具 + 关键词兜底
+enable_tarots = true
+# /tarots 管理指令
+enable_commands = true
+
+[proxy]
+# 下载卡面图片时是否使用代理
+enable_proxy = false
+proxy_url = ""
+
+[cards]
+# 默认牌组（可用 /tarots switch 切换，切换结果保存在插件 data 目录）
+using_cards = "classical"
+# 允许使用的牌组。bilibili（B站幻星集）与 east（东方）涉及第三方角色/二创授权，
+# 默认不启用；确认你有使用权后可以加进这个列表。
+use_cards = ["classical", "elaine"]
+
+[adjustment]
+# 额外发送未经人设解读的原始牌面文本
+enable_original_text = false
+# 关键词兜底：检测到「塔罗/占卜 + 抽/看/问…」时直接抽牌
+enable_keyword_fallback = true
+# 结果文本使用 emoji
+emoji_enabled = true
+# 卡面图片缺失时是否中止占卜（false = 降级为纯文字）
+strict_images = true
+# 把整副牌阵合成一张布局图发送（关闭则逐张发送）
+layout_image = true
+# 单张抽牌直接发牌面图（不套牌阵桌布背景）
+single_card_plain = true
+# 把牌面/牌义/解读合并成一条转发消息发送（减少刷屏）
+merged_message = true
+# /tarots list 附带当前牌组预览图
+show_deck_thumbnail = true
+
+[permissions]
+# 允许使用 /tarots 指令的 QQ 号（纯数字）
+admin_users = []

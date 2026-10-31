@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+# ---- 塔罗牌插件运行时文件 ----
+config.toml
+tarots_cache/
+tests/_tmp/

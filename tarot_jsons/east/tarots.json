@@ -3,7 +3,8 @@
         "card_types": "大阿卡纳",
         "total_cards": 22,
         "description": "东方塔罗牌组 - 仅包含大阿卡纳",
-        "base_url": "https://raw.githubusercontent.com/MinatoAquaCrews/nonebot_plugin_tarot/master/nonebot_plugin_tarot/resource/TouhouTarot/"
+        "base_url": "https://raw.githubusercontent.com/MinatoAquaCrews/nonebot_plugin_tarot/master/nonebot_plugin_tarot/resource/TouhouTarot/",
+        "notice": "东方 Project 二次创作素材，需遵守 ZUN 二次创作规约（非商业、注明来源）。"
     },
     "0": {
         "name": "愚者",
