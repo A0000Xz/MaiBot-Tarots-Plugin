@@ -9,8 +9,8 @@
 | 项 | 内容 |
 |---|---|
 | 插件 ID | `github.a0000xz.maibot-tarots-plugin` |
-| 原作者 | [A0000Xz](https://github.com/A0000Xz)（本项目 1.x 版本作者） |
-| 维护者 | [NethielChou](https://github.com/NethielChou)（原作者授权接手，2.0.0 起） |
+| 原作者 | A肆零西烛（GitHub: [A0000Xz](https://github.com/A0000Xz)，本项目 1.x 版本作者） |
+| 维护者 | [NethielChou](https://github.com/NethielChou)（原作者授权接手，2.0.0 起；市场作者字段仍保留原作者） |
 | 版本 | 2.0.0 |
 | 类型 | 娱乐扩展 |
 | 许可证 | [AGPL-3.0](LICENSE) |
