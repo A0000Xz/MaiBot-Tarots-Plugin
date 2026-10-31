@@ -600,7 +600,3 @@ def compose_spread_image(
         return buffer.getvalue()
     except Exception:
         return None
-
-
-# ──── WebUI 配置页布局（只重组展示，不改配置模型 / 默认值 / TOML 路径）────
-
