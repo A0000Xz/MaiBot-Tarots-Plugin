@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import sys
+import types
 import unittest
 from pathlib import Path
 from typing import Any
@@ -15,23 +16,27 @@ MODULE_NAME = "maibot_tarots_plugin"
 
 
 def load_plugin_module() -> Any:
-    cached = sys.modules.get(MODULE_NAME)
+    """按包方式加载插件（plugin.py 通过相对导入引用同目录模块）。"""
+
+    module_key = f"{MODULE_NAME}.plugin"
+    cached = sys.modules.get(module_key)
     if cached is not None:
         return cached
-    spec = importlib.util.spec_from_file_location(
-        MODULE_NAME,
-        PLUGIN_DIR / "plugin.py",
-        submodule_search_locations=[str(PLUGIN_DIR)],
-    )
+    if MODULE_NAME not in sys.modules:
+        package = types.ModuleType(MODULE_NAME)
+        package.__path__ = [str(PLUGIN_DIR)]
+        sys.modules[MODULE_NAME] = package
+    spec = importlib.util.spec_from_file_location(module_key, PLUGIN_DIR / "plugin.py")
     if spec is None or spec.loader is None:
         raise RuntimeError("无法加载塔罗插件模块")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[MODULE_NAME] = module
+    sys.modules[module_key] = module
     spec.loader.exec_module(module)
     return module
 
 
 PLUGIN = load_plugin_module()
+CORE = sys.modules[f"{MODULE_NAME}.tarots_core"]
 
 
 class FormationAndDeckTest(unittest.TestCase):
@@ -40,7 +45,7 @@ class FormationAndDeckTest(unittest.TestCase):
     def test_formations_loaded(self) -> None:
         formations = PLUGIN.load_formations()
         self.assertGreaterEqual(len(formations), 11)
-        for name in PLUGIN.FALLBACK_FORMATION_NAMES:
+        for name in CORE.FALLBACK_FORMATION_NAMES:
             self.assertIn(name, formations, name)
         self.assertEqual(formations["单张"]["cards_num"], 1)
         self.assertEqual(formations["六芒星"]["cards_num"], 7)
@@ -173,6 +178,12 @@ class IntentParseTest(unittest.TestCase):
         self.assertEqual(PLUGIN.parse_formation_from_text("用身心灵看看", self.formations), "身心灵")
         self.assertEqual(PLUGIN.parse_formation_from_text("过去现在未来", self.formations), "时间之流")
         self.assertEqual(PLUGIN.parse_formation_from_text("来个十字牌阵", self.formations), "吉普赛十字")
+
+    def test_followup_and_daily_text(self) -> None:
+        self.assertTrue(PLUGIN.is_followup_text("刚才那张牌什么意思"))
+        self.assertFalse(PLUGIN.is_followup_text("今天天气不错"))
+        self.assertTrue(PLUGIN.is_daily_request("今天塔罗运势怎么样"))
+        self.assertFalse(PLUGIN.is_daily_request("塔罗牌真好玩"))
 
     def test_parse_card_type(self) -> None:
         self.assertEqual(PLUGIN.parse_card_type_from_text("只看大阿卡纳"), "大阿卡纳")

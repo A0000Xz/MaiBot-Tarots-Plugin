@@ -1,789 +1,63 @@
-"""塔罗牌插件 v2 — 为 MaiBot 1.3.x / 插件 SDK 2.x 重写。
+"""塔罗工坊（塔罗牌插件 v2）— 为 MaiBot 1.3.x / 插件 SDK 2.x。
 
-继承自 A0000Xz/MaiBot-Tarots-Plugin 的玩法（8 种牌阵、大/小阿卡纳、多牌组、
-卡面下载与缓存、/tarots cache 与 /tarots switch、管理员白名单、人设风格解牌），
-并把旧版 Action/Command 迁移到新 SDK 的 Tool/Command，新增关键词兜底与友好排版。
-
-卡面图片在运行时从各牌组 JSON 里配置的 base_url 下载并缓存，仓库本身不存图片。
+插件入口：生命周期、Tool / Hook / Command 组件与发送流程。
+牌阵、牌组、布局图等纯逻辑在 tarots_core.py，配置模型在 config.py，
+WebUI 配置页布局在 config_ui.py。
 """
 
 import asyncio
 import base64
-import io
 import json
-import math
 import random
 import re
-import shutil
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, ClassVar
 
-from maibot_sdk import Command, Field, HookHandler, MaiBotPlugin, PluginConfigBase, Tool
+from maibot_sdk import Command, HookHandler, MaiBotPlugin, PluginConfigBase, Tool
 from maibot_sdk.types import HookMode, HookOrder, ToolParameterInfo, ToolParamType
 
-
-PLUGIN_DIR = Path(__file__).parent
-TAROT_JSON_DIR = PLUGIN_DIR / "tarot_jsons"
-FORMATION_FILE = TAROT_JSON_DIR / "formation.json"
-
-DEFAULT_FORMATION = "单张"
-DEFAULT_CARD_TYPE = "全部"
-CARD_TYPES = ("全部", "大阿卡纳", "小阿卡纳")
-MAJOR_CARD_IDS = tuple(str(i) for i in range(22))
-MINOR_CARD_IDS = tuple(str(i) for i in range(22, 78))
-ALL_CARD_IDS = MAJOR_CARD_IDS + MINOR_CARD_IDS
-
-# 牌阵名用于 Tool 参数的 enum；formation.json 加载失败时退回这份内置列表。
-FALLBACK_FORMATION_NAMES = (
-    "单张",
-    "圣三角",
-    "时间之流",
-    "四要素",
-    "五牌阵",
-    "吉普赛十字",
-    "马蹄",
-    "六芒星",
-    "凯尔特十字",
-    "二选一",
-    "身心灵",
+from . import tarots_core
+from .config import TarotsConfig
+from .config_ui import build_config_ui_schema
+from .tarots_core import (
+    CARD_TYPES,
+    DAILY_INSTRUCTION,
+    DEFAULT_CARD_TYPE,
+    DEFAULT_FORMATION,
+    FOLLOWUP_INSTRUCTION,
+    IMAGE_DOWNLOAD_RETRIES,
+    IMAGE_DOWNLOAD_TIMEOUT,
+    IMAGE_MAX_BYTES,
+    LAST_DRAW_TTL,
+    PERSONA_INSTRUCTION,
+    TAROT_ICON,
+    available_deck_ids,
+    build_persona_material,
+    build_result_text,
+    compose_spread_image,
+    deck_card_range,
+    deck_display_name,
+    is_daily_request,
+    is_followup_text,
+    load_custom_formations,
+    load_deck,
+    load_formations,
+    load_json,
+    looks_like_tarot_request,
+    parse_card_type_from_text,
+    parse_formation_from_text,
+    rotate_image_180,
 )
 
-# 牌阵别名：让懂塔罗的群友用自己的说法也能触发
-FORMATION_ALIASES: dict[str, tuple[str, ...]] = {
-    "单张": ("单牌", "一张", "抽一张", "单卡", "抽1张"),
-    "圣三角": ("三角牌阵", "三角阵", "圣三角牌阵", "三角"),
-    "时间之流": ("三张", "三牌", "三张牌", "过去现在未来", "时间流", "时间之流牌阵", "抽3张"),
-    "四要素": ("四元素", "风火水土", "四要素牌阵", "四张"),
-    "五牌阵": ("五张", "五牌", "五张牌", "五牌阵牌阵"),
-    "吉普赛十字": ("十字", "十字牌阵", "吉普赛"),
-    "马蹄": ("马蹄形", "马蹄阵", "六张", "六牌"),
-    "六芒星": ("六芒星阵", "六角星", "六芒", "七张", "七牌"),
-    "凯尔特十字": ("凯尔特", "凯尔特阵", "十张", "十牌", "凯尔特十牌"),
-    "二选一": ("二择一", "两个选择", "AB选择", "二选一牌阵"),
-    "身心灵": ("身心灵牌阵", "身心", "精神牌阵"),
-}
 
-NUMERAL_EMOJI = ("1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟")
-ORIENTATION_UP = "☀️ 正位"
-ORIENTATION_REVERSED = "🌗 逆位"
-TAROT_ICON = "🔮"
-
-IMAGE_DOWNLOAD_RETRIES = 3
-IMAGE_DOWNLOAD_TIMEOUT = 20
-IMAGE_MAX_BYTES = 8 * 1024 * 1024
-SEND_RETRY_DELAY = 1.0
-
-_TAROT_WORDS = ("塔罗", "占卜")
-_DRAW_INTENT_WORDS = ("抽", "占卜", "卜", "算", "测", "看", "问", "求", "来", "帮")
-_MENTION_PATTERN = re.compile(r"@[^\s@]+")
 _TAROTS_COMMAND_PATTERN = (
     r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations|newformation)"
     r"(?:\s+(?P<value>\S+))?(?:\s+(?P<rest>.*))?"
 )
 
-PERSONA_INSTRUCTION = (
-    "请用你平时说话的语气，为用户解读下面的塔罗牌结果："
-    "只依据材料里的牌名、正逆位和牌义，不要编造其他牌；"
-    "不要输出标题或列表格式，像聊天一样自然地说，控制在 5 句以内。"
-)
-
-FOLLOWUP_INSTRUCTION = (
-    "用户正在追问上一次塔罗占卜。请用你平时说话的语气接着回答，"
-    "只根据上一次的牌面材料回答，不要重新抽牌、不要编造其他牌；像聊天一样自然，控制在 4 句以内。"
-)
-
-DAILY_INSTRUCTION = (
-    "这是给用户的「今日一牌」。请用你平时说话的语气，结合牌面和这句话给一句今日运势解读，"
-    "温暖一点、具体一点，控制在 3 句以内。"
-)
-
-FOLLOWUP_WORDS = ("刚才", "上一张", "那张牌", "这个牌阵", "继续", "再解释", "什么意思", "怎么说")
-DAILY_WORDS = ("每日一牌", "今日一牌", "每天一牌", "今日塔罗", "今天塔罗", "今日运势", "今天运势")
-LAST_DRAW_TTL = 600  # 追问上下文保留 10 分钟
-
-# 各牌阵的卡牌中心位置（单位：一张牌宽/高），未列出的牌阵按网格排布
-SPREAD_LAYOUTS: dict[str, list[tuple[float, float]]] = {
-    "单张": [(0.0, 0.0)],
-    "时间之流": [(-0.95, 0.0), (0.0, 0.0), (0.95, 0.0)],
-    "圣三角": [(-0.9, 0.55), (0.0, -0.55), (0.9, 0.55)],
-    "四要素": [(-0.6, -0.6), (0.6, -0.6), (-0.6, 0.6), (0.6, 0.6)],
-    "吉普赛十字": [(0.0, 0.0), (-0.95, 0.0), (0.95, 0.0), (0.0, -0.95), (0.0, 0.95)],
-    "五牌阵": [(0.0, 0.0), (-0.95, 0.35), (0.95, 0.35), (0.0, -0.8), (0.0, 0.95)],
-    "马蹄": [(-1.25, 0.55), (-0.9, -0.2), (-0.35, -0.7), (0.35, -0.7), (0.9, -0.2), (1.25, 0.55)],
-    "六芒星": [
-        (-1.2, 0.0),
-        (-0.6, -0.95),
-        (0.6, -0.95),
-        (1.2, 0.0),
-        (0.6, 0.95),
-        (-0.6, 0.95),
-        (0.0, 0.0),
-    ],
-    "凯尔特十字": [
-        (-1.9, -0.6),
-        (-0.95, -0.6),
-        (0.0, -0.6),
-        (0.95, -0.6),
-        (1.9, -0.6),
-        (-1.9, 0.6),
-        (-0.95, 0.6),
-        (0.0, 0.6),
-        (0.95, 0.6),
-        (1.9, 0.6),
-    ],
-    "二选一": [(-0.95, -0.55), (-0.95, 0.55), (0.95, -0.55), (0.95, 0.55), (0.0, 0.0)],
-    "身心灵": [(-0.95, 0.0), (0.0, 0.0), (0.95, 0.0)],
-}
-
-CARD_W, CARD_H = 260, 390
-CARD_GAP = 30
-LABEL_H = 46
-
-
-def load_json(path: Path) -> dict[str, Any] | None:
-    """读取 UTF-8 JSON；失败返回 None。"""
-
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return raw if isinstance(raw, dict) else None
-
-
-def load_formations() -> dict[str, dict[str, Any]]:
-    """读取牌阵配置。"""
-
-    data = load_json(FORMATION_FILE)
-    if not data:
-        return {}
-    formations: dict[str, dict[str, Any]] = {}
-    for name, value in data.items():
-        if not isinstance(value, dict):
-            continue
-        cards_num = value.get("cards_num")
-        represent = value.get("represent")
-        if not isinstance(cards_num, int) or cards_num <= 0 or not isinstance(represent, list) or not represent:
-            continue
-        formations[str(name)] = {
-            "cards_num": cards_num,
-            "is_cut": bool(value.get("is_cut", False)),
-            "represent": [str(item) for item in represent[0]],
-        }
-    return formations
-
-
-def available_deck_ids() -> list[str]:
-    """扫描 tarot_jsons 下带 tarots.json 的牌组目录。"""
-
-    if not TAROT_JSON_DIR.is_dir():
-        return []
-    return sorted(
-        child.name
-        for child in TAROT_JSON_DIR.iterdir()
-        if child.is_dir() and (child / "tarots.json").is_file()
-    )
-
-
-def load_deck(deck_id: str) -> dict[str, Any] | None:
-    """读取一套牌组，返回 {"meta": {...}, "cards": {id: {...}}}。"""
-
-    path = TAROT_JSON_DIR / deck_id / "tarots.json"
-    raw = load_json(path)
-    if not raw:
-        return None
-    meta = raw.get("_meta") if isinstance(raw.get("_meta"), dict) else {}
-    cards = {key: value for key, value in raw.items() if key != "_meta" and isinstance(value, dict)}
-    if not cards:
-        return None
-    return {"meta": meta, "cards": cards}
-
-
-def deck_card_range(deck: dict[str, Any], card_type: str) -> list[str]:
-    """按牌组实际包含的牌，返回请求范围内的卡牌 ID。"""
-
-    cards = deck["cards"]
-    major = [card_id for card_id in MAJOR_CARD_IDS if card_id in cards]
-    minor = [card_id for card_id in MINOR_CARD_IDS if card_id in cards]
-    if card_type == "大阿卡纳":
-        return major
-    if card_type == "小阿卡纳":
-        return minor
-    return major + minor
-
-
-def deck_display_name(deck_id: str, deck: dict[str, Any]) -> str:
-    """牌组展示名。"""
-
-    description = str(deck["meta"].get("description") or "").strip()
-    if description:
-        return f"{deck_id}（{description}）"
-    total = len(deck["cards"])
-    return f"{deck_id}（{total} 张）"
-
-
-def looks_like_tarot_request(text: str) -> bool:
-    """粗判是否是「想抽塔罗/占卜」的请求（关键词兜底）。"""
-
-    normalized = re.sub(r"\s+", " ", _MENTION_PATTERN.sub(" ", text)).strip()
-    if not normalized or normalized.startswith("/"):
-        return False
-    if not any(word in normalized for word in _TAROT_WORDS):
-        return False
-    return any(word in normalized for word in _DRAW_INTENT_WORDS)
-
-
-def parse_formation_from_text(text: str, formations: dict[str, dict[str, Any]]) -> str:
-    """从自然语言里识别牌阵名（支持内置别名与自定义牌阵）；没说就用单张。"""
-
-    normalized = _MENTION_PATTERN.sub(" ", text)
-    normalized = normalized.replace(" ", "")
-    # 先匹配完整牌阵名，再匹配别名，避免「十字」抢走「凯尔特十字」
-    for name in formations:
-        if name in normalized:
-            return name
-    for name, aliases in FORMATION_ALIASES.items():
-        if name not in formations:
-            continue
-        for alias in aliases:
-            if alias in normalized:
-                return name
-    return DEFAULT_FORMATION
-
-
-def parse_card_type_from_text(text: str) -> str:
-    """从自然语言里识别抽牌范围。"""
-
-    normalized = _MENTION_PATTERN.sub(" ", text)
-    if "大阿卡纳" in normalized or "大牌" in normalized:
-        return "大阿卡纳"
-    if "小阿卡纳" in normalized or "小牌" in normalized:
-        return "小阿卡纳"
-    return DEFAULT_CARD_TYPE
-
-
-def rotate_image_180(image_bytes: bytes) -> bytes | None:
-    """把正位卡面旋转 180° 生成逆位图；Pillow 不可用时返回 None。"""
-
-    try:
-        from PIL import Image  # 延迟导入，避免无 Pillow 环境直接崩
-    except ImportError:
-        return None
-    try:
-        with Image.open(io.BytesIO(image_bytes)) as image:
-            rotated = image.rotate(180)
-            buffer = io.BytesIO()
-            rotated.save(buffer, format="PNG")
-            return buffer.getvalue()
-    except Exception:
-        return None
-
-
-def build_result_text(
-    formation_name: str,
-    deck_id: str,
-    cards: Sequence[tuple[str, bool]],
-    formation: dict[str, Any],
-    deck: dict[str, Any],
-) -> str:
-    """构造带 emoji 的抽牌结果文本。"""
-
-    lines = [f"{TAROT_ICON} 塔罗占卜 · {formation_name}牌阵（{deck_id} 牌组）", ""]
-    positions = formation.get("represent") or []
-    for index, (card_id, is_reversed) in enumerate(cards):
-        card = deck["cards"][card_id]
-        name = str(card.get("name") or card_id)
-        info = card.get("info") if isinstance(card.get("info"), dict) else {}
-        description = str(
-            (info.get("reverseDescription") if is_reversed else info.get("description")) or "（暂无牌义）"
-        )
-        position = positions[index] if index < len(positions) else f"位置{index + 1}"
-        numeral = NUMERAL_EMOJI[index] if index < len(NUMERAL_EMOJI) else f"{index + 1}."
-        orientation = ORIENTATION_REVERSED if is_reversed else ORIENTATION_UP
-        lines.append(f"{numeral} {position} · {name} · {orientation}")
-        lines.append(f"   {description}")
-    reversed_count = sum(1 for _, is_reversed in cards if is_reversed)
-    lines.append("")
-    lines.append(f"🃏 共 {len(cards)} 张牌，其中 {reversed_count} 张逆位")
-    return "\n".join(lines)
-
-
-def build_persona_material(
-    formation_name: str,
-    cards: Sequence[tuple[str, bool]],
-    formation: dict[str, Any],
-    deck: dict[str, Any],
-    question: str,
-) -> str:
-    """构造交给宿主生成人设解读的材料。"""
-
-    lines = [f"抽牌场景：塔罗{formation_name}牌阵"]
-    positions = formation.get("represent") or []
-    for index, (card_id, is_reversed) in enumerate(cards):
-        card = deck["cards"][card_id]
-        info = card.get("info") if isinstance(card.get("info"), dict) else {}
-        description = str(
-            (info.get("reverseDescription") if is_reversed else info.get("description")) or ""
-        )
-        position = positions[index] if index < len(positions) else f"位置{index + 1}"
-        orientation = "逆位" if is_reversed else "正位"
-        lines.append(f"「{position}」{card.get('name') or card_id}（{orientation}）：{description}")
-    lines.append(f"用户的问题：{question.strip() or '（没有特别说明）'}")
-    return "\n".join(lines)
-
-
-def load_custom_formations(data_dir: Path) -> dict[str, dict[str, Any]]:
-    """从 data 目录读取用户自定义牌阵（formations.json），校验后返回。"""
-
-    raw = load_json(data_dir / "formations.json")
-    if not raw:
-        return {}
-    formations: dict[str, dict[str, Any]] = {}
-    for name, value in raw.items():
-        if not isinstance(value, dict):
-            continue
-        cards_num = value.get("cards_num")
-        represent = value.get("represent")
-        if not isinstance(cards_num, int) or not 1 <= cards_num <= 10:
-            continue
-        if not isinstance(represent, list) or not represent or not isinstance(represent[0], list):
-            continue
-        positions = [str(item) for item in represent[0]]
-        while len(positions) < cards_num:
-            positions.append(f"位置{len(positions) + 1}")
-        formations[str(name).strip()] = {
-            "cards_num": cards_num,
-            "is_cut": bool(value.get("is_cut", False)),
-            "represent": positions[:cards_num],
-            "custom": True,
-        }
-    return {name: value for name, value in formations.items() if name}
-
-
-def _load_font(size: int) -> Any:
-    """尽量找一个能显示中文的字体；找不到就退回默认字体。"""
-
-    try:
-        from PIL import ImageFont
-    except ImportError:
-        return None
-    for path in (
-        r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\simhei.ttf",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    ):
-        try:
-            return ImageFont.truetype(path, size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
-
-def _gradient_color(ratio: float) -> tuple[int, int, int]:
-    """桌布背景的竖向渐变颜色（深靛蓝 -> 紫罗兰）。"""
-
-    ratio = max(0.0, min(1.0, ratio))
-    top = (26, 17, 48)
-    bottom = (58, 34, 86)
-    return tuple(int(top[index] + (bottom[index] - top[index]) * ratio) for index in range(3))
-
-
-def _draw_mystic_tablecloth(draw: Any, width: int, height: int, rng: random.Random) -> None:
-    """塔罗桌布风背景：渐变紫布 + 星点 + 星座 + 日月符号 + 星形点缀。"""
-
-    for y in range(height):
-        draw.line([(0, y), (width, y)], fill=_gradient_color(y / max(1, height - 1)))
-    star_count = max(90, width * height // 4200)
-    for _ in range(star_count):
-        x = rng.randint(0, width)
-        y = rng.randint(0, height)
-        radius = rng.choice((1, 1, 2))
-        glow = rng.randint(70, 180)
-        draw.ellipse(
-            [x - radius, y - radius, x + radius, y + radius],
-            fill=(min(255, 200 + glow // 3), min(255, 190 + glow // 4), 255),
-        )
-    points = [(rng.randint(30, width - 30), rng.randint(30, height - 70)) for _ in range(16)]
-    for index in range(len(points) - 1):
-        if rng.random() < 0.65:
-            draw.line([points[index], points[index + 1]], fill=(128, 116, 178), width=1)
-    # 右上月亮
-    moon_x, moon_y, moon_r = width - 96, 96, 40
-    draw.ellipse([moon_x - moon_r, moon_y - moon_r, moon_x + moon_r, moon_y + moon_r], fill=(236, 224, 184))
-    shade = _gradient_color(moon_y / max(1, height - 1))
-    draw.ellipse(
-        [moon_x - moon_r + 20, moon_y - moon_r - 14, moon_x + moon_r + 20, moon_y + moon_r - 14],
-        fill=shade,
-    )
-    # 左上太阳
-    sun_x, sun_y, sun_r = 92, 92, 26
-    draw.ellipse([sun_x - sun_r, sun_y - sun_r, sun_x + sun_r, sun_y + sun_r], fill=(244, 200, 120))
-    for angle in range(0, 360, 45):
-        radians = math.radians(angle)
-        start = (sun_x + math.cos(radians) * (sun_r + 8), sun_y + math.sin(radians) * (sun_r + 8))
-        end = (sun_x + math.cos(radians) * (sun_r + 22), sun_y + math.sin(radians) * (sun_r + 22))
-        draw.line([start, end], fill=(244, 200, 120), width=3)
-    # 金色星形符号
-    for _ in range(6):
-        cx = rng.randint(60, max(61, width - 60))
-        cy = rng.randint(170, max(171, height - 120))
-        size = rng.choice((7, 9, 12))
-        draw.polygon(
-            [
-                (cx, cy - size),
-                (cx + size * 0.35, cy - size * 0.2),
-                (cx + size, cy - size * 0.2),
-                (cx + size * 0.45, cy + size * 0.35),
-                (cx + size * 0.7, cy + size),
-                (cx, cy + size * 0.6),
-                (cx - size * 0.7, cy + size),
-                (cx - size * 0.45, cy + size * 0.35),
-                (cx - size, cy - size * 0.2),
-                (cx - size * 0.35, cy - size * 0.2),
-            ],
-            fill=(214, 178, 108),
-        )
-
-
-def _apply_cloth_texture(image: Any) -> Any:
-    """叠加斜向织纹，做出布料质感。"""
-
-    from PIL import Image as _Image, ImageDraw as _ImageDraw
-
-    overlay = _Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = _ImageDraw.Draw(overlay)
-    width, height = image.size
-    for offset in range(-height, width, 46):
-        draw.line([(offset, 0), (offset + height, height)], fill=(255, 255, 255, 7), width=2)
-    for offset in range(-height, width, 92):
-        draw.line([(offset, 0), (offset + height, height)], fill=(255, 255, 255, 4), width=10)
-    return _Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
-
-
-def compose_spread_image(
-    formation_name: str,
-    entries: Sequence[tuple[bytes, str, str]],
-) -> bytes | None:
-    """把整副牌按牌阵位置拼成一张布局图（塔罗桌布背景）。"""
-
-    try:
-        from PIL import Image, ImageDraw
-    except ImportError:
-        return None
-    if not entries:
-        return None
-    try:
-        count = len(entries)
-        layout = SPREAD_LAYOUTS.get(formation_name)
-        if layout is None or len(layout) != count:
-            columns = 1 if count == 1 else min(3, count)
-            rows = (count + columns - 1) // columns
-            layout = [
-                ((index % columns) - (columns - 1) / 2, (index // columns) - (rows - 1) / 2)
-                for index in range(count)
-            ]
-        cell_w = CARD_W + CARD_GAP
-        cell_h = CARD_H + LABEL_H + CARD_GAP
-        xs = [x for x, _ in layout]
-        ys = [y for _, y in layout]
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-        margin = 46
-        title_h = 86
-        width = int((max_x - min_x) * cell_w + CARD_W + 2 * margin)
-        height = int((max_y - min_y) * cell_h + CARD_H + LABEL_H + 2 * margin + title_h)
-        rng = random.Random(formation_name)
-        canvas = Image.new("RGB", (width, height), (16, 14, 24))
-        draw = ImageDraw.Draw(canvas)
-        _draw_mystic_tablecloth(draw, width, height, rng)
-        canvas = _apply_cloth_texture(canvas)
-        draw = ImageDraw.Draw(canvas)
-
-        title_font = _load_font(34)
-        label_font = _load_font(24)
-        title = f"TAROT · {formation_name}牌阵"
-        if title_font is not None:
-            box = draw.textbbox((0, 0), title, font=title_font)
-            draw.text(((width - (box[2] - box[0])) / 2, 28), title, font=title_font, fill=(214, 178, 108))
-        draw.line([(width * 0.28, 74), (width * 0.72, 74)], fill=(150, 122, 64), width=2)
-
-        for index, (image_bytes, card_name, position) in enumerate(entries):
-            x_unit, y_unit = layout[index]
-            left = margin + (x_unit - min_x) * cell_w
-            top = margin + title_h + (y_unit - min_y) * cell_h
-            draw.rounded_rectangle(
-                [left - 6, top - 6, left + CARD_W + 14, top + CARD_H + 14],
-                radius=16,
-                fill=(18, 12, 28),
-            )
-            with Image.open(io.BytesIO(image_bytes)) as card:
-                card = card.convert("RGB")
-                card.thumbnail((CARD_W, CARD_H))
-                canvas.paste(card, (int(left), int(top)))
-            draw.rounded_rectangle(
-                [left - 3, top - 3, left + CARD_W + 3, top + CARD_H + 3],
-                radius=12,
-                outline=(201, 164, 92),
-                width=2,
-            )
-            label = f"{position} · {card_name}"
-            if label_font is not None:
-                box = draw.textbbox((0, 0), label, font=label_font)
-                text_x = left + (CARD_W - (box[2] - box[0])) / 2
-                text_y = top + CARD_H + 10
-                draw.rounded_rectangle(
-                    [text_x - 10, text_y - 2, text_x + (box[2] - box[0]) + 10, text_y + (box[3] - box[1]) + 4],
-                    radius=8,
-                    fill=(22, 15, 34),
-                )
-                draw.text((text_x, text_y), label, font=label_font, fill=(240, 232, 214))
-        buffer = io.BytesIO()
-        canvas.save(buffer, format="PNG", optimize=True)
-        return buffer.getvalue()
-    except Exception:
-        return None
-
-
-# ──── WebUI 配置页布局（只重组展示，不改配置模型 / 默认值 / TOML 路径）────
-
-
-@dataclass(frozen=True)
-class _UiSection:
-    """配置页里的一个展示块。"""
-
-    source: str
-    title: str
-    description: str
-    fields: dict[str, str]
-    collapsed: bool = False
-
-
-_UI_SECTIONS: dict[str, _UiSection] = {
-    "cards": _UiSection(
-        source="cards",
-        title="牌组设置",
-        description="默认用哪套牌组、以及允许使用哪些牌组。带锁的牌组涉及第三方版权，默认不启用。",
-        fields={"using_cards": "默认牌组", "use_cards": "允许启用的牌组（逐项添加牌组名）"},
-    ),
-    "permissions": _UiSection(
-        source="permissions",
-        title="管理员",
-        description="只有名单里的 QQ 号能用 /tarots 管理指令；普通群友抽牌不受限制。",
-        fields={"admin_users": "管理员 QQ 号"},
-    ),
-    "components": _UiSection(
-        source="components",
-        title="功能开关",
-        description="抽牌工具 / 关键词兜底、以及管理指令，可以分别关掉。",
-        fields={"enable_tarots": "启用抽牌工具", "enable_commands": "启用 /tarots 指令"},
-    ),
-    "draw_experience": _UiSection(
-        source="adjustment",
-        title="抽牌体验",
-        description="决定抽牌结果怎么呈现：要不要关键词兜底、要不要额外发原始牌面文本。",
-        fields={
-            "enable_keyword_fallback": "关键词兜底抽牌",
-            "enable_original_text": "额外发送原始牌面文本",
-            "merged_message": "合并消息发送（防刷屏）",
-        },
-    ),
-    "draw_advanced": _UiSection(
-        source="adjustment",
-        title="呈现细节",
-        description="emoji、布局图与图片容错，一般保持默认即可。",
-        fields={
-            "emoji_enabled": "结果使用 emoji",
-            "strict_images": "卡面缺失时中止占卜",
-            "layout_image": "牌阵布局合成图",
-            "single_card_plain": "单张直接发牌面",
-            "show_deck_thumbnail": "牌组列表附预览图",
-        },
-        collapsed=True,
-    ),
-    "proxy": _UiSection(
-        source="proxy",
-        title="卡面下载代理",
-        description="部署机访问不了图源时，在这里填代理；缓存过的卡面不再联网。",
-        fields={"enable_proxy": "启用代理", "proxy_url": "代理地址"},
-        collapsed=True,
-    ),
-    "plugin_info": _UiSection(
-        source="plugin",
-        title="插件信息",
-        description="用于版本识别，保持现状即可。",
-        fields={"enabled": "启用插件", "config_version": "配置版本"},
-        collapsed=True,
-    ),
-}
-
-_UI_TABS: dict[str, tuple[str, tuple[str, ...]]] = {
-    "basic": ("常用", ("cards", "permissions")),
-    "draw": ("抽牌", ("components", "draw_experience")),
-    "advanced": ("高级", ("proxy", "draw_advanced", "plugin_info")),
-}
-
-_UI_HINTS: dict[str, str] = {
-    "cards.using_cards": "默认牌组名，例如 classical（公版韦特）。运行中可用 /tarots switch 切换，切换结果会记住。",
-    "cards.use_cards": "允许使用的牌组清单。classical / elaine 为公版韦特；bilibili、east 默认不启用，确认使用权后可用 /tarots allow 临时解锁。",
-    "permissions.admin_users": "填纯数字 QQ 号；留空则没人能用 /tarots 指令（抽牌不受影响）。",
-    "components.enable_tarots": "关掉后自然语言/关键词都不会抽牌，只剩管理指令。",
-    "components.enable_commands": "关掉后 /tarots 指令不可用。",
-    "adjustment.enable_keyword_fallback": "消息里出现「塔罗/占卜 + 抽/看/问…」时直接抽牌，避免规划器漏调工具后自己编牌。",
-    "adjustment.enable_original_text": "在人设解读之外，额外发一份未经过滤的牌面文本，方便对照。",
-    "adjustment.merged_message": "开：把标题、牌面图、牌义、人设解读合并成一条转发消息发送，避免一大堆字刷屏；关：分条发送。",
-    "adjustment.emoji_enabled": "结果标题与正逆位前的 emoji。",
-    "adjustment.strict_images": "开：任一张卡面下载失败就中止占卜；关：降级为纯文字解读。",
-    "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张桌布背景布局图再发（更像真的牌阵）；关：逐张发送牌面。",
-    "adjustment.single_card_plain": "开：单张抽牌直接发牌面图，不加牌阵桌布背景——一眼区分「单抽」和「牌阵」。",
-    "adjustment.show_deck_thumbnail": "/tarots list 回复后附一张当前牌组的预览图。",
-    "proxy.enable_proxy": "只有在部署机访问不了卡面图源时才需要开。",
-    "proxy.proxy_url": "例如 http://127.0.0.1:7890；只用于下载卡面。",
-    "plugin.config_version": "由插件维护，不要手动改。",
-}
-
-
-def build_config_ui_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """在 SDK 生成的 Schema 上补中文页签 / 分组 / 提示，字段默认值与类型保持不变。"""
-
-    source_sections = schema.get("sections") or {}
-    sections: dict[str, Any] = {}
-    tabs: list[dict[str, Any]] = []
-    for tab_id, (tab_title, section_ids) in _UI_TABS.items():
-        tabs.append({"id": tab_id, "title": tab_title, "sections": list(section_ids)})
-        for section_id in section_ids:
-            spec = _UI_SECTIONS[section_id]
-            template = source_sections.get(spec.source)
-            if template is None:
-                continue
-            template_fields = template.get("fields") or {}
-            fields: dict[str, Any] = {}
-            for order, (field_name, label) in enumerate(spec.fields.items()):
-                field_template = template_fields.get(field_name)
-                if field_template is None:
-                    continue
-                path = f"{spec.source}.{field_name}"
-                entry = dict(field_template)
-                hint = _UI_HINTS.get(path, entry.get("description") or "")
-                entry.update(label=label, hint=hint, description=hint, order=order)
-                if path == "plugin.config_version":
-                    entry["disabled"] = True
-                fields[field_name] = entry
-            if not fields:
-                continue
-            sections[section_id] = {
-                **template,
-                "name": spec.source,
-                "title": spec.title,
-                "description": spec.description,
-                "collapsed": spec.collapsed,
-                "order": len(sections),
-                "fields": fields,
-            }
-    return {**schema, "sections": sections, "layout": {"type": "tabs", "tabs": tabs}}
-
-
-class PluginSection(PluginConfigBase):
-    """插件基础配置。"""
-
-    __ui_label__ = "插件"
-    __ui_icon__ = "package"
-    __ui_order__ = 0
-
-    enabled: bool = Field(default=True, description="是否启用插件")
-    config_version: str = Field(default="2.0.0", description="配置版本")
-
-
-class ComponentsSection(PluginConfigBase):
-    """组件开关。"""
-
-    __ui_label__ = "组件"
-    __ui_icon__ = "toggle-left"
-    __ui_order__ = 1
-
-    enable_tarots: bool = Field(default=True, description="是否启用抽牌工具与关键词兜底")
-    enable_commands: bool = Field(default=True, description="是否启用 /tarots 管理指令")
-
-
-class ProxySection(PluginConfigBase):
-    """卡面下载代理。"""
-
-    __ui_label__ = "下载代理"
-    __ui_icon__ = "globe"
-    __ui_order__ = 2
-
-    enable_proxy: bool = Field(default=False, description="下载卡面时是否使用代理")
-    proxy_url: str = Field(default="", description="代理地址，例如 http://127.0.0.1:7890")
-
-
-class CardsSection(PluginConfigBase):
-    """牌组设置。"""
-
-    __ui_label__ = "牌组"
-    __ui_icon__ = "layers"
-    __ui_order__ = 3
-
-    using_cards: str = Field(default="classical", description="默认使用的牌组名（可用 /tarots switch 切换）")
-    use_cards: list[str] = Field(
-        default_factory=lambda: ["classical", "elaine"],
-        description="允许使用的牌组名列表；不在列表里的牌组即使存在也不可用（可用 /tarots allow 临时解锁）",
-    )
-
-
-class AdjustmentSection(PluginConfigBase):
-    """功能微调。"""
-
-    __ui_label__ = "功能微调"
-    __ui_icon__ = "sliders"
-    __ui_order__ = 4
-
-    enable_original_text: bool = Field(default=False, description="是否额外发送未经过人设解读的原始牌面文本")
-    enable_keyword_fallback: bool = Field(
-        default=True,
-        description="关键词兜底：检测到「塔罗/占卜 + 抽/看/问…」时直接抽牌，避免规划器漏调工具",
-    )
-    emoji_enabled: bool = Field(default=True, description="结果文本里是否使用 emoji")
-    strict_images: bool = Field(default=True, description="卡面图片缺失时是否中止占卜（关闭则降级为纯文字）")
-    layout_image: bool = Field(default=True, description="把整副牌阵合成一张布局图发送（关闭则逐张发送）")
-    single_card_plain: bool = Field(
-        default=True,
-        description="单张抽牌直接发牌面图，不套牌阵桌布背景（便于区分单抽与牌阵）",
-    )
-    merged_message: bool = Field(
-        default=True,
-        description="把牌面、牌义和解读合并成一条转发消息发送，减少刷屏",
-    )
-    show_deck_thumbnail: bool = Field(default=True, description="/tarots list 附带当前牌组预览图")
-
-
-class PermissionsSection(PluginConfigBase):
-    """管理员白名单。"""
-
-    __ui_label__ = "权限"
-    __ui_icon__ = "shield"
-    __ui_order__ = 5
-
-    admin_users: list[str] = Field(
-        default_factory=list,
-        description="允许使用 /tarots 指令的 QQ 号列表（纯数字）",
-    )
-
-
-class TarotsConfig(PluginConfigBase):
-    """塔罗牌插件完整配置。"""
-
-    plugin: PluginSection = Field(default_factory=PluginSection)
-    components: ComponentsSection = Field(default_factory=ComponentsSection)
-    proxy: ProxySection = Field(default_factory=ProxySection)
-    cards: CardsSection = Field(default_factory=CardsSection)
-    adjustment: AdjustmentSection = Field(default_factory=AdjustmentSection)
-    permissions: PermissionsSection = Field(default_factory=PermissionsSection)
 
 
 class TarotsPlugin(MaiBotPlugin):
@@ -1189,10 +463,7 @@ class TarotsPlugin(MaiBotPlugin):
         if time.time() - record["ts"] > LAST_DRAW_TTL:
             self._last_draws.pop(stream_id, None)
             return None
-        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
-        if not compact or len(compact) > 40:
-            return None
-        return record if any(word in compact for word in FOLLOWUP_WORDS) else None
+        return record if is_followup_text(text) else None
 
     async def _handle_followup(self, stream_id: str, text: str, record: dict[str, Any]) -> bool:
         """基于上一次抽牌回答追问，不重新抽牌。"""
@@ -1206,12 +477,7 @@ class TarotsPlugin(MaiBotPlugin):
     def _looks_like_daily(self, text: str) -> bool:
         """判断是否是每日一牌/今日运势请求。"""
 
-        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
-        if not compact or compact.startswith("/"):
-            return False
-        if not any(word in compact for word in DAILY_WORDS):
-            return False
-        return any(word in compact for word in ("塔罗", "占卜", "牌"))
+        return is_daily_request(text)
 
     async def _daily_draw(self, stream_id: str, user_id: str = "") -> bool:
         """每日一牌：同一天同一用户抽到同一张，可重复查看。"""
@@ -1321,7 +587,7 @@ class TarotsPlugin(MaiBotPlugin):
         relative = str(info.get("imgUrl") or "").strip().lstrip("/\\")
         if not relative:
             return None
-        base_dir = (TAROT_JSON_DIR / self._using_cards).resolve()
+        base_dir = (tarots_core.TAROT_JSON_DIR / self._using_cards).resolve()
         path = (base_dir / relative).resolve()
         if path != base_dir and base_dir not in path.parents:
             return None

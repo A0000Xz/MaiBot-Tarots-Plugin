@@ -17,6 +17,17 @@
 | 支持版本 | MaiBot 1.3.13 – 1.3.99 / 插件 SDK 2.16.0 – 2.99.99 |
 | 仓库 | <https://github.com/A0000Xz/MaiBot-Tarots-Plugin> |
 
+## 代码结构
+
+| 文件 | 职责 |
+|---|---|
+| `plugin.py` | 插件入口：生命周期、Tool / Hook / Command 组件、发送流程 |
+| `tarots_core.py` | 牌阵 / 牌组加载与校验、关键词解析、结果文本、桌布风布局图（纯逻辑，无宿主依赖） |
+| `config.py` | 配置模型（pydantic / SDK `PluginConfigBase`） |
+| `config_ui.py` | WebUI 配置页布局（页签 / 分组 / 中文标签 / 提示） |
+| `tarot_jsons/` | 牌组数据与牌阵定义 |
+| `tests/` | 单元测试（unittest，无需 pytest） |
+
 ## 功能特点
 
 - **自然语言抽牌**：群里有人想抽塔罗/占卜（「帮我抽张塔罗」「用时间之流看看感情」），麦麦会自己判断并调用抽牌工具，也支持关键词兜底，不怕规划器漏调
