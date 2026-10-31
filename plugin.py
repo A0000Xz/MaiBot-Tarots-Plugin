@@ -809,7 +809,7 @@ class TarotsPlugin(MaiBotPlugin):
         self._reload_formations()
         self._apply_deck_state()
         self.ctx.logger.info(
-            "塔罗牌插件已加载：%d 种牌阵（含自定义），当前牌组=%s，可用牌组=%s，管理员=%d",
+            "塔罗工坊已加载：%d 种牌阵（含自定义），当前牌组=%s，可用牌组=%s，管理员=%d",
             len(self._formations),
             self._using_cards or "（无）",
             self._allowed_decks(),
@@ -820,7 +820,7 @@ class TarotsPlugin(MaiBotPlugin):
         """清理缓存。"""
 
         self._image_cache.clear()
-        self.ctx.logger.info("塔罗牌插件已卸载")
+        self.ctx.logger.info("塔罗工坊已卸载")
 
     async def on_config_update(self, scope: str, config_data: dict[str, object], version: str) -> None:
         """配置热更新后重载牌组。"""
@@ -828,7 +828,7 @@ class TarotsPlugin(MaiBotPlugin):
         del config_data
         self._reload_formations()
         self._apply_deck_state()
-        self.ctx.logger.info("塔罗牌插件配置已更新：scope=%s version=%s 当前牌组=%s", scope, version, self._using_cards)
+        self.ctx.logger.info("塔罗工坊配置已更新：scope=%s version=%s 当前牌组=%s", scope, version, self._using_cards)
 
     # ──── 抽牌入口：Tool ────
 
