@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2.0.1（2026-10-31）
+
+- **修复插件启动/首次抽牌时卡面下载报 `NameError: name 'urllib' is not defined`**：2.0.0 代码拆分时 `plugin.py` 丢失了 `urllib.request` / `urllib.error` 导入，导致首次需要下载卡面时异常；现已补回
+- 新增真实下载链路的单元测试（不再只 mock 卡面获取），避免同类问题再漏测
+
+
 ## 2.0.0（2026-10-30）
 
 - 按 review 意见拆分代码结构：`plugin.py`（入口/组件/发送）+ `tarots_core.py`（牌阵/牌组/布局图纯逻辑）+ `config.py`（配置模型）+ `config_ui.py`（配置页布局）

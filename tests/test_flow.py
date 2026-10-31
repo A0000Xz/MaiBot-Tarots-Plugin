@@ -581,6 +581,35 @@ class NewFormationTest(PluginTestCase):
         self.assertNotIn("群友三连", plugin._formations)
 
 
+class DownloadTest(PluginTestCase):
+    """真实下载链路：防止拆分后再出现 urllib 未导入之类的 NameError。"""
+
+    async def test_download_image_writes_cache(self) -> None:
+        plugin, _ = await self.make_plugin()
+        plugin._deck = PLUGIN.load_deck("classical")
+        plugin._using_cards = "classical"
+        target = self._tmp_dir / "cache" / "0_norm.png"
+
+        class FakeResponse:
+            def __init__(self, data: bytes) -> None:
+                self._data = data
+
+            def read(self, amount: int = -1) -> bytes:
+                return self._data if amount is None or amount < 0 else self._data[:amount]
+
+            def __enter__(self) -> "DownloadTest.FakeResponse":
+                return self
+
+            def __exit__(self, *args: Any) -> bool:
+                return False
+
+        with mock.patch.object(PLUGIN.urllib.request, "urlopen", return_value=FakeResponse(TINY_PNG)):
+            result = plugin._download_image("0", target)
+
+        self.assertEqual(result, TINY_PNG)
+        self.assertEqual(target.read_bytes(), TINY_PNG)
+
+
 class ConfigTest(PluginTestCase):
     """配置默认值与配置页 Schema。"""
 

@@ -11,6 +11,8 @@ import json
 import random
 import re
 import time
+import urllib.error
+import urllib.request
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
