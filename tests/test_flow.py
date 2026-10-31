@@ -51,9 +51,10 @@ PLUGIN = load_plugin_module()
 class FakeHarness:
     """替换底层 RPC，记录 capability 调用。"""
 
-    def __init__(self, reply_fail: bool = False) -> None:
+    def __init__(self, reply_fail: bool = False, forward_fail: bool = False) -> None:
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.reply_fail = reply_fail
+        self.forward_fail = forward_fail
 
     async def rpc(
         self,
@@ -72,6 +73,10 @@ class FakeHarness:
             return {"success": True, "sent": True, "message_id": f"m{len(self.calls)}"}
         if capability == "send.image":
             return {"success": True, "sent": True, "message_id": f"m{len(self.calls)}"}
+        if capability == "send.forward":
+            if self.forward_fail:
+                return {"success": False, "sent": False, "error": "fake forward failure"}
+            return {"success": True, "sent": True, "message_id": f"m{len(self.calls)}"}
         if capability == "maisaka.reply.generate":
             if self.reply_fail:
                 return {"success": False, "error": "fake failure"}
@@ -83,6 +88,19 @@ class FakeHarness:
 
     def args_of(self, capability: str) -> list[dict[str, Any]]:
         return [args for name, args in self.calls if name == capability]
+
+    def forward_segments(self) -> list[dict[str, Any]]:
+        segments: list[dict[str, Any]] = []
+        for args in self.args_of("send.forward"):
+            for node in args.get("messages") or []:
+                segments.extend(node.get("segments") or [])
+        return segments
+
+    def forward_images(self) -> list[str]:
+        return [str(seg.get("content")) for seg in self.forward_segments() if seg.get("type") == "image"]
+
+    def forward_texts(self) -> list[str]:
+        return [str(seg.get("content")) for seg in self.forward_segments() if seg.get("type") == "text"]
 
 
 class PluginTestCase(unittest.IsolatedAsyncioTestCase):
@@ -143,13 +161,12 @@ class ToolTest(PluginTestCase):
         self.assertTrue(result["stop_after_execution"])
         capabilities = harness.capabilities()
         self.assertIn("maisaka.reply.generate", capabilities)
-        self.assertEqual(capabilities.count("send.image"), 1)
-        self.assertIn("send.text", capabilities)
-        # 单张默认直接发牌面原图（不套牌阵桌布背景）
-        image_payload = harness.args_of("send.image")[0]
-        self.assertIn(base64.b64encode(TINY_PNG).decode(), [value for value in image_payload.values() if isinstance(value, str)])
-        text = harness.args_of("send.text")[0]["text"]
-        self.assertEqual(text, PERSONA_TEXT)
+        # 默认合并成一条转发消息（不刷屏）
+        self.assertEqual(capabilities.count("send.forward"), 1)
+        self.assertNotIn("send.image", capabilities)
+        self.assertNotIn("send.text", capabilities)
+        self.assertIn(base64.b64encode(TINY_PNG).decode(), harness.forward_images())
+        self.assertTrue(any(PERSONA_TEXT in text for text in harness.forward_texts()))
 
     async def test_single_uses_layout_when_plain_disabled(self) -> None:
         plugin, harness = await self.make_plugin(adjustment={"single_card_plain": False})
@@ -158,9 +175,10 @@ class ToolTest(PluginTestCase):
                 mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
         self.assertTrue(result["success"])
-        image_payload = harness.args_of("send.image")[0]
         raw = base64.b64encode(TINY_PNG).decode()
-        self.assertNotIn(raw, [value for value in image_payload.values() if isinstance(value, str)])
+        images = harness.forward_images()
+        self.assertEqual(len(images), 1)
+        self.assertNotIn(raw, images)
 
     async def test_seven_card_spread(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -169,8 +187,9 @@ class ToolTest(PluginTestCase):
                 mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="六芒星")
         self.assertTrue(result["success"])
-        # 默认开启布局合成图：7 张牌只发 1 张合成图
-        self.assertEqual(harness.capabilities().count("send.image"), 1)
+        # 默认开启布局合成图 + 合并消息：7 张牌只发 1 条消息、1 张合成图
+        self.assertEqual(harness.capabilities().count("send.forward"), 1)
+        self.assertEqual(len(harness.forward_images()), 1)
 
     async def test_invalid_formation(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -186,9 +205,9 @@ class ToolTest(PluginTestCase):
                 mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
             result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
         self.assertTrue(result["success"])
-        text = harness.args_of("send.text")[0]["text"]
-        self.assertIn("🔮", text)
-        self.assertIn("单张", text)
+        texts = " ".join(harness.forward_texts())
+        self.assertIn("🔮", texts)
+        self.assertIn("单张", texts)
 
     async def test_strict_image_failure_aborts(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -198,6 +217,32 @@ class ToolTest(PluginTestCase):
         self.assertFalse(result["success"])
         texts = harness.args_of("send.text")
         self.assertTrue(any("占卜中止" in args["text"] for args in texts))
+
+
+class MergedMessageTest(PluginTestCase):
+    """合并消息开关与失败回退。"""
+
+    async def test_merged_disabled_sends_separately(self) -> None:
+        plugin, harness = await self.make_plugin(adjustment={"merged_message": False})
+        with self.speed_up_sleep(), self.patch_sample(1), \
+                mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
+        self.assertTrue(result["success"])
+        self.assertNotIn("send.forward", harness.capabilities())
+        self.assertEqual(harness.capabilities().count("send.image"), 1)
+        self.assertTrue(any(PERSONA_TEXT in args["text"] for args in harness.args_of("send.text")))
+
+    async def test_forward_failure_falls_back(self) -> None:
+        plugin, harness = await self.make_plugin(FakeHarness(forward_fail=True))
+        with self.speed_up_sleep(), self.patch_sample(1), \
+                mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
+        self.assertTrue(result["success"])
+        self.assertEqual(harness.capabilities().count("send.forward"), 1)
+        self.assertEqual(harness.capabilities().count("send.image"), 1)
+        self.assertTrue(any(PERSONA_TEXT in args["text"] for args in harness.args_of("send.text")))
 
 
 class KeywordTriggerTest(PluginTestCase):
@@ -212,7 +257,7 @@ class KeywordTriggerTest(PluginTestCase):
                 message={"session_id": "stream-1", "processed_plain_text": "@麦麦 帮我占卜一下明天天气"}
             )
         self.assertEqual(result, {"action": "abort"})
-        self.assertIn("send.image", harness.capabilities())
+        self.assertIn("send.forward", harness.capabilities())
 
     async def test_casual_mention_not_triggered(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -439,9 +484,11 @@ class DailyTest(PluginTestCase):
             )
         self.assertTrue(success1)
         self.assertTrue(success2)
-        images = harness.args_of("send.image")
-        self.assertEqual(len(images), 2)
-        self.assertEqual(images[0], images[1])
+        forwards = harness.args_of("send.forward")
+        self.assertEqual(len(forwards), 2)
+        first_images = [seg.get("content") for node in forwards[0]["messages"] for seg in node.get("segments") or [] if seg.get("type") == "image"]
+        second_images = [seg.get("content") for node in forwards[1]["messages"] for seg in node.get("segments") or [] if seg.get("type") == "image"]
+        self.assertEqual(first_images, second_images)
 
 
 class ThumbnailTest(PluginTestCase):
@@ -540,6 +587,7 @@ class ConfigTest(PluginTestCase):
         self.assertTrue(config["adjustment"]["enable_keyword_fallback"])
         self.assertTrue(config["adjustment"]["layout_image"])
         self.assertTrue(config["adjustment"]["single_card_plain"])
+        self.assertTrue(config["adjustment"]["merged_message"])
         self.assertEqual(config["permissions"]["admin_users"], [])
 
     def test_config_ui_schema_has_tabs(self) -> None:

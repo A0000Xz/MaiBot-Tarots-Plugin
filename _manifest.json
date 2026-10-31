@@ -28,7 +28,8 @@
   "capabilities": [
     "send.text",
     "send.image",
-    "maisaka.reply.generate"
+    "maisaka.reply.generate",
+    "send.forward"
   ],
   "i18n": {
     "default_locale": "zh-CN",

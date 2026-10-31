@@ -33,6 +33,8 @@ strict_images = true
 layout_image = true
 # 单张抽牌直接发牌面图（不套牌阵桌布背景）
 single_card_plain = true
+# 把牌面/牌义/解读合并成一条转发消息发送（减少刷屏）
+merged_message = true
 # /tarots list 附带当前牌组预览图
 show_deck_thumbnail = true
 

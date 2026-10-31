@@ -591,6 +591,7 @@ _UI_SECTIONS: dict[str, _UiSection] = {
         fields={
             "enable_keyword_fallback": "关键词兜底抽牌",
             "enable_original_text": "额外发送原始牌面文本",
+            "merged_message": "合并消息发送（防刷屏）",
         },
     ),
     "draw_advanced": _UiSection(
@@ -636,6 +637,7 @@ _UI_HINTS: dict[str, str] = {
     "components.enable_commands": "关掉后 /tarots 指令不可用。",
     "adjustment.enable_keyword_fallback": "消息里出现「塔罗/占卜 + 抽/看/问…」时直接抽牌，避免规划器漏调工具后自己编牌。",
     "adjustment.enable_original_text": "在人设解读之外，额外发一份未经过滤的牌面文本，方便对照。",
+    "adjustment.merged_message": "开：把标题、牌面图、牌义、人设解读合并成一条转发消息发送，避免一大堆字刷屏；关：分条发送。",
     "adjustment.emoji_enabled": "结果标题与正逆位前的 emoji。",
     "adjustment.strict_images": "开：任一张卡面下载失败就中止占卜；关：降级为纯文字解读。",
     "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张桌布背景布局图再发（更像真的牌阵）；关：逐张发送牌面。",
@@ -752,6 +754,10 @@ class AdjustmentSection(PluginConfigBase):
     single_card_plain: bool = Field(
         default=True,
         description="单张抽牌直接发牌面图，不套牌阵桌布背景（便于区分单抽与牌阵）",
+    )
+    merged_message: bool = Field(
+        default=True,
+        description="把牌面、牌义和解读合并成一条转发消息发送，减少刷屏",
     )
     show_deck_thumbnail: bool = Field(default=True, description="/tarots list 附带当前牌组预览图")
 
@@ -1061,24 +1067,73 @@ class TarotsPlugin(MaiBotPlugin):
         )
         if use_layout and len(entries) == len(cards) and entries:
             composite = compose_spread_image(formation_name, entries)
-        if composite is not None:
-            await self._send_image(composite, stream_id)
-        else:
-            for image_bytes in images:
-                if image_bytes is not None:
-                    await self._send_image(image_bytes, stream_id)
-                    await asyncio.sleep(0.2)
+        payloads: list[bytes] = [composite] if composite is not None else [item for item in images if item is not None]
 
         raw_text = build_result_text(formation_name, self._using_cards, cards, formation, deck)
-        if self.config.adjustment.enable_original_text:
-            await self._reply_text(stream_id, raw_text)
-
         material = build_persona_material(formation_name, cards, formation, deck, question)
         instruction = DAILY_INSTRUCTION if mode == "daily" else None
         persona_text = await self._compose_persona_text(stream_id, material, raw_text, instruction)
-        # 发送只尝试一次：平台回执超时但消息已送达的情况很常见，重发会造成重复发图。
-        await self._reply_text(stream_id, persona_text)
+
+        # 默认合并成一条转发消息，减少刷屏；转发失败自动回退到分条发送
+        sent = False
+        if self.config.adjustment.merged_message:
+            sent = await self._send_merged(
+                stream_id, formation_name, payloads, raw_text, persona_text
+            )
+        if not sent:
+            for payload in payloads:
+                await self._send_image(payload, stream_id)
+                await asyncio.sleep(0.2)
+            if self.config.adjustment.enable_original_text:
+                await self._reply_text(stream_id, raw_text)
+            # 发送只尝试一次：平台回执超时但消息已送达的情况很常见，重发会造成重复发图。
+            await self._reply_text(stream_id, persona_text)
         self._remember_draw(stream_id, formation_name, cards, formation, deck, question, material, raw_text, persona_text)
+        return True
+
+    async def _send_merged(
+        self,
+        stream_id: str,
+        formation_name: str,
+        images: Sequence[bytes],
+        raw_text: str,
+        persona_text: str,
+    ) -> bool:
+        """把标题 / 牌面图 / 牌义 / 人设解读合成一条合并转发消息发送。"""
+
+        nodes: list[dict[str, Any]] = [
+            {
+                "nickname": "塔罗工坊",
+                "segments": [
+                    {
+                        "type": "text",
+                        "content": f"{TAROT_ICON} {formation_name}牌阵 · {self._using_cards} 牌组",
+                    }
+                ],
+            }
+        ]
+        if images:
+            nodes.append(
+                {
+                    "nickname": "牌面",
+                    "segments": [
+                        {"type": "image", "content": base64.b64encode(image).decode("ascii")}
+                        for image in images
+                    ],
+                }
+            )
+        nodes.append({"nickname": "牌义", "segments": [{"type": "text", "content": raw_text}]})
+        if persona_text.strip() and persona_text.strip() != raw_text.strip():
+            nodes.append({"nickname": "解读", "segments": [{"type": "text", "content": persona_text}]})
+        try:
+            result = await self.ctx.send.forward(nodes, stream_id, return_details=True)
+            sent = bool(result.get("sent")) if isinstance(result, dict) else bool(result)
+        except Exception:
+            self.ctx.logger.warning("合并消息发送异常，回退到分条发送", exc_info=True)
+            return False
+        if not sent:
+            self.ctx.logger.warning("合并消息未确认送达，回退到分条发送：stream_id=%s", stream_id)
+            return False
         return True
 
     def _remember_draw(
