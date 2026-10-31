@@ -11,6 +11,7 @@ import asyncio
 import base64
 import io
 import json
+import math
 import random
 import re
 import shutil
@@ -385,11 +386,92 @@ def _load_font(size: int) -> Any:
     return ImageFont.load_default()
 
 
+def _gradient_color(ratio: float) -> tuple[int, int, int]:
+    """桌布背景的竖向渐变颜色（深靛蓝 -> 紫罗兰）。"""
+
+    ratio = max(0.0, min(1.0, ratio))
+    top = (26, 17, 48)
+    bottom = (58, 34, 86)
+    return tuple(int(top[index] + (bottom[index] - top[index]) * ratio) for index in range(3))
+
+
+def _draw_mystic_tablecloth(draw: Any, width: int, height: int, rng: random.Random) -> None:
+    """塔罗桌布风背景：渐变紫布 + 星点 + 星座 + 日月符号 + 星形点缀。"""
+
+    for y in range(height):
+        draw.line([(0, y), (width, y)], fill=_gradient_color(y / max(1, height - 1)))
+    star_count = max(90, width * height // 4200)
+    for _ in range(star_count):
+        x = rng.randint(0, width)
+        y = rng.randint(0, height)
+        radius = rng.choice((1, 1, 2))
+        glow = rng.randint(70, 180)
+        draw.ellipse(
+            [x - radius, y - radius, x + radius, y + radius],
+            fill=(min(255, 200 + glow // 3), min(255, 190 + glow // 4), 255),
+        )
+    points = [(rng.randint(30, width - 30), rng.randint(30, height - 70)) for _ in range(16)]
+    for index in range(len(points) - 1):
+        if rng.random() < 0.65:
+            draw.line([points[index], points[index + 1]], fill=(128, 116, 178), width=1)
+    # 右上月亮
+    moon_x, moon_y, moon_r = width - 96, 96, 40
+    draw.ellipse([moon_x - moon_r, moon_y - moon_r, moon_x + moon_r, moon_y + moon_r], fill=(236, 224, 184))
+    shade = _gradient_color(moon_y / max(1, height - 1))
+    draw.ellipse(
+        [moon_x - moon_r + 20, moon_y - moon_r - 14, moon_x + moon_r + 20, moon_y + moon_r - 14],
+        fill=shade,
+    )
+    # 左上太阳
+    sun_x, sun_y, sun_r = 92, 92, 26
+    draw.ellipse([sun_x - sun_r, sun_y - sun_r, sun_x + sun_r, sun_y + sun_r], fill=(244, 200, 120))
+    for angle in range(0, 360, 45):
+        radians = math.radians(angle)
+        start = (sun_x + math.cos(radians) * (sun_r + 8), sun_y + math.sin(radians) * (sun_r + 8))
+        end = (sun_x + math.cos(radians) * (sun_r + 22), sun_y + math.sin(radians) * (sun_r + 22))
+        draw.line([start, end], fill=(244, 200, 120), width=3)
+    # 金色星形符号
+    for _ in range(6):
+        cx = rng.randint(60, max(61, width - 60))
+        cy = rng.randint(170, max(171, height - 120))
+        size = rng.choice((7, 9, 12))
+        draw.polygon(
+            [
+                (cx, cy - size),
+                (cx + size * 0.35, cy - size * 0.2),
+                (cx + size, cy - size * 0.2),
+                (cx + size * 0.45, cy + size * 0.35),
+                (cx + size * 0.7, cy + size),
+                (cx, cy + size * 0.6),
+                (cx - size * 0.7, cy + size),
+                (cx - size * 0.45, cy + size * 0.35),
+                (cx - size, cy - size * 0.2),
+                (cx - size * 0.35, cy - size * 0.2),
+            ],
+            fill=(214, 178, 108),
+        )
+
+
+def _apply_cloth_texture(image: Any) -> Any:
+    """叠加斜向织纹，做出布料质感。"""
+
+    from PIL import Image as _Image, ImageDraw as _ImageDraw
+
+    overlay = _Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = _ImageDraw.Draw(overlay)
+    width, height = image.size
+    for offset in range(-height, width, 46):
+        draw.line([(offset, 0), (offset + height, height)], fill=(255, 255, 255, 7), width=2)
+    for offset in range(-height, width, 92):
+        draw.line([(offset, 0), (offset + height, height)], fill=(255, 255, 255, 4), width=10)
+    return _Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+
+
 def compose_spread_image(
     formation_name: str,
     entries: Sequence[tuple[bytes, str, str]],
 ) -> bytes | None:
-    """把整副牌按牌阵位置拼成一张布局图（entries: 图片字节, 牌名, 位置名）。"""
+    """把整副牌按牌阵位置拼成一张布局图（塔罗桌布背景）。"""
 
     try:
         from PIL import Image, ImageDraw
@@ -417,7 +499,11 @@ def compose_spread_image(
         title_h = 86
         width = int((max_x - min_x) * cell_w + CARD_W + 2 * margin)
         height = int((max_y - min_y) * cell_h + CARD_H + LABEL_H + 2 * margin + title_h)
+        rng = random.Random(formation_name)
         canvas = Image.new("RGB", (width, height), (16, 14, 24))
+        draw = ImageDraw.Draw(canvas)
+        _draw_mystic_tablecloth(draw, width, height, rng)
+        canvas = _apply_cloth_texture(canvas)
         draw = ImageDraw.Draw(canvas)
 
         title_font = _load_font(34)
@@ -426,25 +512,38 @@ def compose_spread_image(
         if title_font is not None:
             box = draw.textbbox((0, 0), title, font=title_font)
             draw.text(((width - (box[2] - box[0])) / 2, 28), title, font=title_font, fill=(214, 178, 108))
+        draw.line([(width * 0.28, 74), (width * 0.72, 74)], fill=(150, 122, 64), width=2)
 
         for index, (image_bytes, card_name, position) in enumerate(entries):
             x_unit, y_unit = layout[index]
             left = margin + (x_unit - min_x) * cell_w
             top = margin + title_h + (y_unit - min_y) * cell_h
+            draw.rounded_rectangle(
+                [left - 6, top - 6, left + CARD_W + 14, top + CARD_H + 14],
+                radius=16,
+                fill=(18, 12, 28),
+            )
             with Image.open(io.BytesIO(image_bytes)) as card:
                 card = card.convert("RGB")
                 card.thumbnail((CARD_W, CARD_H))
-                draw.rectangle(
-                    [left - 3, top - 3, left + CARD_W + 3, top + CARD_H + 3],
-                    outline=(201, 164, 92),
-                    width=2,
-                )
                 canvas.paste(card, (int(left), int(top)))
+            draw.rounded_rectangle(
+                [left - 3, top - 3, left + CARD_W + 3, top + CARD_H + 3],
+                radius=12,
+                outline=(201, 164, 92),
+                width=2,
+            )
             label = f"{position} · {card_name}"
             if label_font is not None:
                 box = draw.textbbox((0, 0), label, font=label_font)
                 text_x = left + (CARD_W - (box[2] - box[0])) / 2
-                draw.text((text_x, top + CARD_H + 10), label, font=label_font, fill=(240, 232, 214))
+                text_y = top + CARD_H + 10
+                draw.rounded_rectangle(
+                    [text_x - 10, text_y - 2, text_x + (box[2] - box[0]) + 10, text_y + (box[3] - box[1]) + 4],
+                    radius=8,
+                    fill=(22, 15, 34),
+                )
+                draw.text((text_x, text_y), label, font=label_font, fill=(240, 232, 214))
         buffer = io.BytesIO()
         canvas.save(buffer, format="PNG", optimize=True)
         return buffer.getvalue()
@@ -502,6 +601,7 @@ _UI_SECTIONS: dict[str, _UiSection] = {
             "emoji_enabled": "结果使用 emoji",
             "strict_images": "卡面缺失时中止占卜",
             "layout_image": "牌阵布局合成图",
+            "single_card_plain": "单张直接发牌面",
             "show_deck_thumbnail": "牌组列表附预览图",
         },
         collapsed=True,
@@ -538,7 +638,8 @@ _UI_HINTS: dict[str, str] = {
     "adjustment.enable_original_text": "在人设解读之外，额外发一份未经过滤的牌面文本，方便对照。",
     "adjustment.emoji_enabled": "结果标题与正逆位前的 emoji。",
     "adjustment.strict_images": "开：任一张卡面下载失败就中止占卜；关：降级为纯文字解读。",
-    "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张布局图再发（更像真的牌阵）；关：逐张发送牌面。",
+    "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张桌布背景布局图再发（更像真的牌阵）；关：逐张发送牌面。",
+    "adjustment.single_card_plain": "开：单张抽牌直接发牌面图，不加牌阵桌布背景——一眼区分「单抽」和「牌阵」。",
     "adjustment.show_deck_thumbnail": "/tarots list 回复后附一张当前牌组的预览图。",
     "proxy.enable_proxy": "只有在部署机访问不了卡面图源时才需要开。",
     "proxy.proxy_url": "例如 http://127.0.0.1:7890；只用于下载卡面。",
@@ -648,6 +749,10 @@ class AdjustmentSection(PluginConfigBase):
     emoji_enabled: bool = Field(default=True, description="结果文本里是否使用 emoji")
     strict_images: bool = Field(default=True, description="卡面图片缺失时是否中止占卜（关闭则降级为纯文字）")
     layout_image: bool = Field(default=True, description="把整副牌阵合成一张布局图发送（关闭则逐张发送）")
+    single_card_plain: bool = Field(
+        default=True,
+        description="单张抽牌直接发牌面图，不套牌阵桌布背景（便于区分单抽与牌阵）",
+    )
     show_deck_thumbnail: bool = Field(default=True, description="/tarots list 附带当前牌组预览图")
 
 
@@ -951,7 +1056,10 @@ class TarotsPlugin(MaiBotPlugin):
             if image_bytes is not None
         ]
         composite = None
-        if self.config.adjustment.layout_image and len(entries) == len(cards) and entries:
+        use_layout = self.config.adjustment.layout_image and (
+            len(cards) > 1 or not self.config.adjustment.single_card_plain
+        )
+        if use_layout and len(entries) == len(cards) and entries:
             composite = compose_spread_image(formation_name, entries)
         if composite is not None:
             await self._send_image(composite, stream_id)

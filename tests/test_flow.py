@@ -145,8 +145,22 @@ class ToolTest(PluginTestCase):
         self.assertIn("maisaka.reply.generate", capabilities)
         self.assertEqual(capabilities.count("send.image"), 1)
         self.assertIn("send.text", capabilities)
+        # 单张默认直接发牌面原图（不套牌阵桌布背景）
+        image_payload = harness.args_of("send.image")[0]
+        self.assertIn(base64.b64encode(TINY_PNG).decode(), [value for value in image_payload.values() if isinstance(value, str)])
         text = harness.args_of("send.text")[0]["text"]
         self.assertEqual(text, PERSONA_TEXT)
+
+    async def test_single_uses_layout_when_plain_disabled(self) -> None:
+        plugin, harness = await self.make_plugin(adjustment={"single_card_plain": False})
+        with self.speed_up_sleep(), self.patch_sample(1), \
+                mock.patch.object(PLUGIN.random, "random", return_value=0.9), \
+                mock.patch.object(plugin, "_get_card_image", new=mock.AsyncMock(return_value=TINY_PNG)):
+            result = await plugin.handle_tarot_tool(stream_id="stream-1", formation="单张")
+        self.assertTrue(result["success"])
+        image_payload = harness.args_of("send.image")[0]
+        raw = base64.b64encode(TINY_PNG).decode()
+        self.assertNotIn(raw, [value for value in image_payload.values() if isinstance(value, str)])
 
     async def test_seven_card_spread(self) -> None:
         plugin, harness = await self.make_plugin()
@@ -524,6 +538,8 @@ class ConfigTest(PluginTestCase):
         self.assertEqual(config["cards"]["using_cards"], "classical")
         self.assertEqual(config["cards"]["use_cards"], ["classical", "elaine"])
         self.assertTrue(config["adjustment"]["enable_keyword_fallback"])
+        self.assertTrue(config["adjustment"]["layout_image"])
+        self.assertTrue(config["adjustment"]["single_card_plain"])
         self.assertEqual(config["permissions"]["admin_users"], [])
 
     def test_config_ui_schema_has_tabs(self) -> None:

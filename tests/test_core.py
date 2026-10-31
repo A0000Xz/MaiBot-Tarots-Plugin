@@ -131,6 +131,8 @@ class TextBuildTest(unittest.TestCase):
         with Image.open(io.BytesIO(result)) as image:
             self.assertGreater(image.width, 600)
             self.assertGreater(image.height, 400)
+            colors = image.convert("RGB").getcolors(maxcolors=300000) or []
+            self.assertGreater(len(colors), 100, "布局图背景应该是桌布风，不是纯色")
 
     def test_compose_fallback_grid(self) -> None:
         from PIL import Image

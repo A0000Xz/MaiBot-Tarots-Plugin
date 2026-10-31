@@ -31,6 +31,8 @@ emoji_enabled = true
 strict_images = true
 # 把整副牌阵合成一张布局图发送（关闭则逐张发送）
 layout_image = true
+# 单张抽牌直接发牌面图（不套牌阵桌布背景）
+single_card_plain = true
 # /tarots list 附带当前牌组预览图
 show_deck_thumbnail = true
 
