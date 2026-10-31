@@ -3,7 +3,7 @@
   "id": "github.a0000xz.maibot-tarots-plugin",
   "version": "2.0.0",
   "name": "塔罗工坊",
-  "description": "塔罗工坊：11 种牌阵、可自定义牌阵与牌组、桌布风牌阵布局图、麦麦人设解牌",
+  "description": "面向 MaiBot 新版插件系统的塔罗牌占卜插件：11 种牌阵、可自定义牌阵与牌组、桌布风布局图、麦麦人设解牌",
   "author": {
     "name": "A0000Xz",
     "url": "https://github.com/A0000Xz"
