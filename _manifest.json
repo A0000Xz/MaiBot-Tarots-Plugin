@@ -2,8 +2,8 @@
   "manifest_version": 2,
   "id": "github.a0000xz.maibot-tarots-plugin",
   "version": "2.0.0",
-  "name": "塔罗牌插件",
-  "description": "抽塔罗牌占卜：8 种牌阵、大/小阿卡纳、多套牌组、卡面缓存，并用麦麦自己的人设语气解牌",
+  "name": "塔罗工坊",
+  "description": "塔罗工坊：11 种牌阵、可自定义牌阵与牌组、桌布风牌阵布局图、麦麦人设解牌",
   "author": {
     "name": "A0000Xz",
     "url": "https://github.com/A0000Xz"
