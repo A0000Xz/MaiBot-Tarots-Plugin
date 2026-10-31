@@ -36,6 +36,7 @@ def load_plugin_module() -> Any:
 
 
 PLUGIN = load_plugin_module()
+CORE = sys.modules[f"{MODULE_NAME}.tarots_core"]
 
 
 class FormationAndDeckTest(unittest.TestCase):
@@ -44,7 +45,7 @@ class FormationAndDeckTest(unittest.TestCase):
     def test_formations_loaded(self) -> None:
         formations = PLUGIN.load_formations()
         self.assertGreaterEqual(len(formations), 11)
-        for name in PLUGIN.FALLBACK_FORMATION_NAMES:
+        for name in CORE.FALLBACK_FORMATION_NAMES:
             self.assertIn(name, formations, name)
         self.assertEqual(formations["单张"]["cards_num"], 1)
         self.assertEqual(formations["六芒星"]["cards_num"], 7)
@@ -177,6 +178,12 @@ class IntentParseTest(unittest.TestCase):
         self.assertEqual(PLUGIN.parse_formation_from_text("用身心灵看看", self.formations), "身心灵")
         self.assertEqual(PLUGIN.parse_formation_from_text("过去现在未来", self.formations), "时间之流")
         self.assertEqual(PLUGIN.parse_formation_from_text("来个十字牌阵", self.formations), "吉普赛十字")
+
+    def test_followup_and_daily_text(self) -> None:
+        self.assertTrue(PLUGIN.is_followup_text("刚才那张牌什么意思"))
+        self.assertFalse(PLUGIN.is_followup_text("今天天气不错"))
+        self.assertTrue(PLUGIN.is_daily_request("今天塔罗运势怎么样"))
+        self.assertFalse(PLUGIN.is_daily_request("塔罗牌真好玩"))
 
     def test_parse_card_type(self) -> None:
         self.assertEqual(PLUGIN.parse_card_type_from_text("只看大阿卡纳"), "大阿卡纳")

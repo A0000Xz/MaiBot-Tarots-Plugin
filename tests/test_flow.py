@@ -412,8 +412,7 @@ class LocalImageTest(PluginTestCase):
 
     async def test_local_images_support(self) -> None:
         tarot_root = self._make_demo_deck("images/m00.png")
-        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root), \
-                mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
+        with mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
             plugin, _ = await self.make_plugin(use_cards=("demo",))
             self.assertEqual(plugin._using_cards, "demo")
             data = await plugin._ensure_cached_image("0")
@@ -422,8 +421,7 @@ class LocalImageTest(PluginTestCase):
 
     async def test_local_image_traversal_blocked(self) -> None:
         tarot_root = self._make_demo_deck("../../../secret.png")
-        with mock.patch.object(PLUGIN, "TAROT_JSON_DIR", new=tarot_root), \
-                mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
+        with mock.patch.object(CORE, "TAROT_JSON_DIR", new=tarot_root):
             plugin, _ = await self.make_plugin(use_cards=("demo",))
             self.assertIsNone(await plugin._ensure_cached_image("0"))
 

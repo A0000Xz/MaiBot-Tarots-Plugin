@@ -14,6 +14,49 @@ from pathlib import Path
 from typing import Any
 
 
+__all__ = [
+    "PLUGIN_DIR",
+    "TAROT_JSON_DIR",
+    "FORMATION_FILE",
+    "DEFAULT_FORMATION",
+    "DEFAULT_CARD_TYPE",
+    "CARD_TYPES",
+    "MAJOR_CARD_IDS",
+    "MINOR_CARD_IDS",
+    "ALL_CARD_IDS",
+    "FALLBACK_FORMATION_NAMES",
+    "NUMERAL_EMOJI",
+    "ORIENTATION_UP",
+    "ORIENTATION_REVERSED",
+    "TAROT_ICON",
+    "IMAGE_DOWNLOAD_RETRIES",
+    "IMAGE_DOWNLOAD_TIMEOUT",
+    "IMAGE_MAX_BYTES",
+    "PERSONA_INSTRUCTION",
+    "FOLLOWUP_INSTRUCTION",
+    "DAILY_INSTRUCTION",
+    "FOLLOWUP_WORDS",
+    "DAILY_WORDS",
+    "LAST_DRAW_TTL",
+    "load_json",
+    "load_formations",
+    "available_deck_ids",
+    "load_deck",
+    "deck_card_range",
+    "deck_display_name",
+    "looks_like_tarot_request",
+    "parse_formation_from_text",
+    "parse_card_type_from_text",
+    "is_followup_text",
+    "is_daily_request",
+    "rotate_image_180",
+    "build_result_text",
+    "build_persona_material",
+    "load_custom_formations",
+    "compose_spread_image",
+]
+
+
 PLUGIN_DIR = Path(__file__).parent
 TAROT_JSON_DIR = PLUGIN_DIR / "tarot_jsons"
 FORMATION_FILE = TAROT_JSON_DIR / "formation.json"
@@ -237,6 +280,32 @@ def parse_formation_from_text(text: str, formations: dict[str, dict[str, Any]]) 
             if alias in normalized:
                 return name
     return DEFAULT_FORMATION
+
+
+def _compact_message_text(text: str) -> str:
+    """去掉 @提及和空白，便于做短文本匹配。"""
+
+    return re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
+
+
+def is_followup_text(text: str, max_length: int = 40) -> bool:
+    """判断一句话是否像在追问上一次抽牌。"""
+
+    compact = _compact_message_text(text)
+    if not compact or len(compact) > max_length:
+        return False
+    return any(word in compact for word in FOLLOWUP_WORDS)
+
+
+def is_daily_request(text: str) -> bool:
+    """判断是否是「每日一牌 / 今日运势」请求。"""
+
+    compact = _compact_message_text(text)
+    if not compact or compact.startswith("/"):
+        return False
+    if not any(word in compact for word in DAILY_WORDS):
+        return False
+    return any(word in compact for word in ("塔罗", "占卜", "牌"))
 
 
 def parse_card_type_from_text(text: str) -> str:

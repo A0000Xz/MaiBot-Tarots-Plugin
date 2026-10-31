@@ -19,10 +19,38 @@ from typing import Any, ClassVar
 from maibot_sdk import Command, HookHandler, MaiBotPlugin, PluginConfigBase, Tool
 from maibot_sdk.types import HookMode, HookOrder, ToolParameterInfo, ToolParamType
 
+from . import tarots_core
 from .config import TarotsConfig
 from .config_ui import build_config_ui_schema
-from .tarots_core import *  # noqa: F401,F403 - 牌阵/牌组/文本/布局图等纯逻辑
-from .tarots_core import _MENTION_PATTERN, FALLBACK_FORMATION_NAMES, MAJOR_CARD_IDS, TAROT_ICON, TAROT_JSON_DIR
+from .tarots_core import (
+    CARD_TYPES,
+    DAILY_INSTRUCTION,
+    DEFAULT_CARD_TYPE,
+    DEFAULT_FORMATION,
+    FOLLOWUP_INSTRUCTION,
+    IMAGE_DOWNLOAD_RETRIES,
+    IMAGE_DOWNLOAD_TIMEOUT,
+    IMAGE_MAX_BYTES,
+    LAST_DRAW_TTL,
+    PERSONA_INSTRUCTION,
+    TAROT_ICON,
+    available_deck_ids,
+    build_persona_material,
+    build_result_text,
+    compose_spread_image,
+    deck_card_range,
+    deck_display_name,
+    is_daily_request,
+    is_followup_text,
+    load_custom_formations,
+    load_deck,
+    load_formations,
+    load_json,
+    looks_like_tarot_request,
+    parse_card_type_from_text,
+    parse_formation_from_text,
+    rotate_image_180,
+)
 
 
 _TAROTS_COMMAND_PATTERN = (
@@ -435,10 +463,7 @@ class TarotsPlugin(MaiBotPlugin):
         if time.time() - record["ts"] > LAST_DRAW_TTL:
             self._last_draws.pop(stream_id, None)
             return None
-        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
-        if not compact or len(compact) > 40:
-            return None
-        return record if any(word in compact for word in FOLLOWUP_WORDS) else None
+        return record if is_followup_text(text) else None
 
     async def _handle_followup(self, stream_id: str, text: str, record: dict[str, Any]) -> bool:
         """基于上一次抽牌回答追问，不重新抽牌。"""
@@ -452,12 +477,7 @@ class TarotsPlugin(MaiBotPlugin):
     def _looks_like_daily(self, text: str) -> bool:
         """判断是否是每日一牌/今日运势请求。"""
 
-        compact = re.sub(r"\s+", "", _MENTION_PATTERN.sub("", text))
-        if not compact or compact.startswith("/"):
-            return False
-        if not any(word in compact for word in DAILY_WORDS):
-            return False
-        return any(word in compact for word in ("塔罗", "占卜", "牌"))
+        return is_daily_request(text)
 
     async def _daily_draw(self, stream_id: str, user_id: str = "") -> bool:
         """每日一牌：同一天同一用户抽到同一张，可重复查看。"""
@@ -567,7 +587,7 @@ class TarotsPlugin(MaiBotPlugin):
         relative = str(info.get("imgUrl") or "").strip().lstrip("/\\")
         if not relative:
             return None
-        base_dir = (TAROT_JSON_DIR / self._using_cards).resolve()
+        base_dir = (tarots_core.TAROT_JSON_DIR / self._using_cards).resolve()
         path = (base_dir / relative).resolve()
         if path != base_dir and base_dir not in path.parents:
             return None
