@@ -147,6 +147,8 @@
 - `imgUrl` 是相对 `base_url` 的图片路径；如果图片随插件一起内置，把 `_meta.local_images` 设为 `true`，`imgUrl` 改为相对牌组目录的路径（如 `images/m00.png`），插件直接读本地文件、不联网
 - 3. 把新牌组名加进配置 `[cards] use_cards`，然后 `/tarots switch <牌组名>` 或 `/tarots cache`，**不用重启**
 
+> 完整字段表（`local_images`、`notice`、卡牌 ID 规则等）与两种图源示例见 [help.md](help.md)。
+
 ## 自定义牌阵
 
 两种方式：
@@ -168,6 +170,8 @@
 - `is_cut`：是否可能抽到逆位
 - `represent`：牌位名称，数量不够会自动补「位置N」
 - 自然语言和 Tool 都能识别新牌阵；未预置布局的牌阵会自动用网格排版生成布局图
+
+> 更多字段说明与排查方法见 [help.md](help.md)。
 
 ## 配置
 
