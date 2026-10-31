@@ -36,5 +36,12 @@
       "zh-CN"
     ]
   },
-  "plugin_type": "entertainment"
+  "plugin_type": "entertainment",
+  "display": {
+    "icon": {
+      "type": "local",
+      "value": "icon.png",
+      "fallback": "sparkles"
+    }
+  }
 }
