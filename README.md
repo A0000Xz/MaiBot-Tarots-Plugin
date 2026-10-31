@@ -9,8 +9,8 @@
 | 项 | 内容 |
 |---|---|
 | 插件 ID | `github.a0000xz.maibot-tarots-plugin` |
-| 原作者 | A肆零西烛（GitHub: [A0000Xz](https://github.com/A0000Xz)，本项目 1.x 版本作者） |
-| 维护者 | [NethielChou](https://github.com/NethielChou)（原作者授权接手，2.0.0 起；市场作者字段仍保留原作者） |
+| 原作者 | A肆零西烛（GitHub: [A0000Xz](https://github.com/A0000Xz)，1.x 版本作者；2.0.0 参与架构设计与代码 review） |
+| 维护者 | A肆零西烛 × [NethielChou](https://github.com/NethielChou)（2.0.0 起共同维护；市场作者字段按规则保留原作者） |
 | 版本 | 2.0.0 |
 | 类型 | 娱乐扩展 |
 | 许可证 | [AGPL-3.0](LICENSE) |
@@ -235,6 +235,7 @@ B 站 2233 娘形象不是开放版权。为了不默认分发风险素材，2.0
 ## 许可与致谢
 
 - 本项目以 [AGPL-3.0](LICENSE) 协议开源，沿用原作者 A0000Xz 的协议
+- 感谢原作者 A肆零西烛 在 2.0.0 迁移与重构中的架构建议与代码 review
 - 玩法参考 [FloatTech/ZeroBot-Plugin](https://github.com/FloatTech/ZeroBot-Plugin) 的塔罗牌插件
 - 牌面数据与图源见各 `tarots.json` 的 `_meta`；`classical` / `elaine` 使用公有领域韦特牌
 - 更新记录见 [CHANGELOG.md](CHANGELOG.md)

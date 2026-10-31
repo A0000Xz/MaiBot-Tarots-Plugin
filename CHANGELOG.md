@@ -8,6 +8,8 @@
 
 ## 2.0.0（2026-10-30）
 
+- 2.0.0 起由原作者 A肆零西烛 与 NethielChou 共同维护（原作者参与架构设计与代码 review）
+
 - 按 review 意见拆分代码结构：`plugin.py`（入口/组件/发送）+ `tarots_core.py`（牌阵/牌组/布局图纯逻辑）+ `config.py`（配置模型）+ `config_ui.py`（配置页布局）
 
 - 按插件市场约束，manifest 作者字段保持原作者「A肆零西烛」不变；2.0.0 起的维护者为 NethielChou（见 README）
