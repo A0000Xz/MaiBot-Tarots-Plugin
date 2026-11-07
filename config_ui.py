@@ -26,6 +26,17 @@ _UI_SECTIONS: dict[str, _UiSection] = {
         description="默认用哪套牌组、以及允许使用哪些牌组。带锁的牌组涉及第三方版权，默认不启用。",
         fields={"using_cards": "默认牌组", "use_cards": "允许启用的牌组（逐项添加牌组名）"},
     ),
+    "deck_pack": _UiSection(
+        source="deck_pack",
+        title="牌组资源包",
+        description="灵契秘仪是独立牌组资源包：首次切换时下载固定版本、校验摘要后本地缓存，之后离线可用。",
+        fields={
+            "enabled": "启用牌组资源包",
+            "kindred_arcana_enabled": "显示「灵契秘仪」",
+            "auto_download": "首次启用自动下载",
+            "download_url": "自定义下载地址（留空用内置）",
+        },
+    ),
     "permissions": _UiSection(
         source="permissions",
         title="管理员",
@@ -78,7 +89,7 @@ _UI_SECTIONS: dict[str, _UiSection] = {
 }
 
 _UI_TABS: dict[str, tuple[str, tuple[str, ...]]] = {
-    "basic": ("常用", ("cards", "permissions")),
+    "basic": ("常用", ("cards", "deck_pack", "permissions")),
     "draw": ("抽牌", ("components", "draw_experience")),
     "advanced": ("高级", ("proxy", "draw_advanced", "plugin_info")),
 }
@@ -97,6 +108,10 @@ _UI_HINTS: dict[str, str] = {
     "adjustment.layout_image": "开：把整副牌按牌阵位置拼成一张桌布背景布局图再发（更像真的牌阵）；关：逐张发送牌面。",
     "adjustment.single_card_plain": "开：单张抽牌直接发牌面图，不加牌阵桌布背景——一眼区分「单抽」和「牌阵」。",
     "adjustment.show_deck_thumbnail": "/tarots list 回复后附一张当前牌组的预览图。",
+    "deck_pack.enabled": "关闭后灵契秘仪不再出现在牌组列表；已安装的本地缓存保留。",
+    "deck_pack.kindred_arcana_enabled": "灵契秘仪是可选牌组，默认不改变你当前使用的牌组；/tarots switch kindred-arcana 首次启用时下载。",
+    "deck_pack.auto_download": "开：首次切换自动从固定版本 Release 下载并校验；关：只能用 /tarots import 本地 zip。",
+    "deck_pack.download_url": "一般留空；只有使用镜像或本地测试时才填写，插件仍会校验固定摘要。",
     "proxy.enable_proxy": "只有在部署机访问不了卡面图源时才需要开。",
     "proxy.proxy_url": "例如 http://127.0.0.1:7890；只用于下载卡面。",
     "plugin.config_version": "由插件维护，不要手动改。",

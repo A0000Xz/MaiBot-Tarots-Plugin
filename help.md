@@ -2,6 +2,40 @@
 
 面向想自己加**牌组**或**牌阵**的进阶用户。普通使用说明见 [README.md](README.md)。
 
+## 零、灵契秘仪资源包（独立牌组）
+
+灵契秘仪（deckId `kindred-arcana`）不是普通本地牌组，而是**独立牌组仓库 + 固定版本 Release**：
+
+- 插件仓库只带牌组元数据（`tarot_jsons/kindred-arcana/tarots.json`），**不包含 78 张图片**
+- 图片资源在牌组仓库 `NethielChou/kindred-arcana` 的 `v1.0.0-rc.5` Release 中
+- 插件内置固定版本、manifest SHA-256、ZIP SHA-256；不追随 latest
+
+### 首次启用
+
+1. 确保网络能访问 GitHub Release（必要时配置 `[proxy]`，下载资源包也会走代理）
+2. `/tarots switch kindred-arcana`
+3. 插件下载 → 校验 ZIP/manifest/78 张图片摘要 → 安装到插件 data 目录 → 切换
+4. 之后抽牌、重启、离线使用都从本地读取；`/tarots list` 显示 `📦 资源 v1.0.0-rc.5 已就绪`
+
+### 下载失败时导入本地包
+
+```text
+/tarots import D:\path\kindred-arcana-1.0.0-rc.5-public.zip
+/tarots switch kindred-arcana
+```
+
+导入同样会校验固定摘要；坏包/缺图/摘要不符会被拒绝，不会污染已安装版本。
+
+### 升级与回滚
+
+- 新版本资源包需插件侧同步更新固定版本号与摘要；升级时先解压到暂存目录、验证通过后原子切换
+- 验证失败保留旧版本；当前已开始的牌局使用原资源版本
+- 已安装版本目录在插件 data 目录的 `deck_packs/kindred-arcana/versions/`；回滚可用 `deck_pack.set_active(data_dir, version)` 或重新导入旧版本 ZIP
+
+### 许可
+
+牌面为原创作品（AI 辅助创作、人工筛选修订），许可为 `LicenseRef-Kindred-Arcana-Artwork`：仅授权随插件下载与使用，禁止单独转售/再分发/商用。详细条款与角色来源见牌组仓库的 `LICENSE-ARTWORK.md`、`RIGHTS.md`、`ATTRIBUTION.md`。
+
 ## 一、自定义牌组
 
 ### 1. 目录结构

@@ -615,7 +615,7 @@ class ConfigTest(PluginTestCase):
 
     def test_defaults(self) -> None:
         config = PLUGIN.TarotsPlugin.build_default_config()
-        self.assertEqual(config["plugin"]["config_version"], "2.0.0")
+        self.assertEqual(config["plugin"]["config_version"], "2.1.0")
         self.assertEqual(config["cards"]["using_cards"], "classical")
         self.assertEqual(config["cards"]["use_cards"], ["classical", "elaine"])
         self.assertTrue(config["adjustment"]["enable_keyword_fallback"])
@@ -623,16 +623,23 @@ class ConfigTest(PluginTestCase):
         self.assertTrue(config["adjustment"]["single_card_plain"])
         self.assertTrue(config["adjustment"]["merged_message"])
         self.assertEqual(config["permissions"]["admin_users"], [])
+        self.assertTrue(config["deck_pack"]["enabled"])
+        self.assertTrue(config["deck_pack"]["kindred_arcana_enabled"])
+        self.assertTrue(config["deck_pack"]["auto_download"])
+        self.assertEqual(config["deck_pack"]["download_url"], "")
 
     def test_config_ui_schema_has_tabs(self) -> None:
-        schema = PLUGIN.TarotsPlugin.build_config_schema(plugin_id=PLUGIN_ID, plugin_name="塔罗牌插件", plugin_version="2.0.0")
+        schema = PLUGIN.TarotsPlugin.build_config_schema(plugin_id=PLUGIN_ID, plugin_name="塔罗牌插件", plugin_version="2.1.0")
         layout = schema.get("layout") or {}
         self.assertEqual(layout.get("type"), "tabs")
         tab_ids = [tab["id"] for tab in layout.get("tabs") or []]
         self.assertEqual(tab_ids, ["basic", "draw", "advanced"])
         # 每个展示块都要能映射回真实配置节
         for section in schema["sections"].values():
-            self.assertIn(section["name"], ("plugin", "components", "proxy", "cards", "adjustment", "permissions"))
+            self.assertIn(
+                section["name"],
+                ("plugin", "components", "proxy", "cards", "deck_pack", "adjustment", "permissions"),
+            )
             for field in section["fields"].values():
                 self.assertIn("label", field)
                 self.assertIn("hint", field)

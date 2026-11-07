@@ -1,5 +1,16 @@
 # 更新记录
 
+## 2.1.0（2026-11-07，本地接入草稿，未发布）
+
+- **新增可选原创牌组「灵契秘仪 / Kindred Arcana」**：78 张原创牌面，独立牌组仓库 + 固定版本 Release 分发
+- 新增 `deck_pack.py` 资源包管理：ZIP 安全解压、manifest/78 图 SHA-256 校验、暂存验证后原子激活、升级失败回滚、离线读取
+- 插件首次 `/tarots switch kindred-arcana` 自动下载固定版本资源包；网络失败可用 `/tarots import <zip>` 本地导入
+- 使用稳定 cardId 映射（`major-00`…`major-21`，`cups/pentacles/swords/wands` 各 14 张；8=力量、11=正义），保存 `deckId/contentVersion/cardId/reversed`，逆位仅旋转正位图 180°
+- 牌义复用插件原有牌义库；`manifest.interpretation` 只作为画面叙事，不替代正逆位牌义
+- 牌组列表显示安装状态与资源版本；单张/布局图完整显示，不裁切牌名与边框
+- 新增配置节 `[deck_pack]` 与 `/tarots import` 指令
+- 测试 69 项通过（含真实资源包 78 图校验、损坏包拒绝、升级回滚、离线重启、宿主级验收）
+
 ## 2.0.1（2026-10-31）
 
 - **修复插件启动/首次抽牌时卡面下载报 `NameError: name 'urllib' is not defined`**：2.0.0 代码拆分时 `plugin.py` 丢失了 `urllib.request` / `urllib.error` 导入，导致首次需要下载卡面时异常；现已补回

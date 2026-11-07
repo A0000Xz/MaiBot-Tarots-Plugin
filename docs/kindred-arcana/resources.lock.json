@@ -1,0 +1,11 @@
+{
+  "deckId": "kindred-arcana",
+  "contentVersion": "1.0.0-rc.5",
+  "manifestSha256": "c20e0e8b06750464bb706d073471fe23d2a00528ee4d4a52de5b77e393f8b79d",
+  "manifestUrl": "https://raw.githubusercontent.com/NethielChou/kindred-arcana/main/manifest.json",
+  "archiveSha256": "47969bf8015f3025d1d5af6e84caff0a9e6c2461688c5aef6792bb20c5480a1b",
+  "archiveUrl": "https://github.com/NethielChou/kindred-arcana/releases/download/v1.0.0-rc.5/kindred-arcana-1.0.0-rc.5-public.zip",
+  "archiveBytes": 224506403,
+  "publicationStatus": "published",
+  "archiveFile": "kindred-arcana-1.0.0-rc.5-public.zip"
+}

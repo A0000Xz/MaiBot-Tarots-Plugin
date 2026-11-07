@@ -176,3 +176,7 @@ cython_debug/
 config.toml
 tarots_cache/
 tests/_tmp/
+# 原创牌组资源包（本地缓存，不随插件仓库提交）
+deck_packs/
+# 本地宿主验收脚本（含本机路径，不提交）
+tests/host_kindred_check.py

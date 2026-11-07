@@ -12,7 +12,7 @@ class PluginSection(PluginConfigBase):
     __ui_order__ = 0
 
     enabled: bool = Field(default=True, description="是否启用插件")
-    config_version: str = Field(default="2.0.0", description="配置版本")
+    config_version: str = Field(default="2.1.0", description="配置版本")
 
 
 class ComponentsSection(PluginConfigBase):
@@ -51,12 +51,34 @@ class CardsSection(PluginConfigBase):
     )
 
 
+class DeckPackSection(PluginConfigBase):
+    """独立牌组资源包（灵契秘仪）。"""
+
+    __ui_label__ = "牌组资源包"
+    __ui_icon__ = "download"
+    __ui_order__ = 4
+
+    enabled: bool = Field(default=True, description="启用独立牌组资源包（灵契秘仪）")
+    kindred_arcana_enabled: bool = Field(
+        default=True,
+        description="在牌组列表显示「灵契秘仪」；首次切换时下载固定版本资源包",
+    )
+    auto_download: bool = Field(
+        default=True,
+        description="未安装时自动下载固定版本资源包；关闭后需用 /tarots import 手动导入",
+    )
+    download_url: str = Field(
+        default="",
+        description="可选镜像/测试地址；留空使用插件内置的固定版本 GitHub Release 地址",
+    )
+
+
 class AdjustmentSection(PluginConfigBase):
     """功能微调。"""
 
     __ui_label__ = "功能微调"
     __ui_icon__ = "sliders"
-    __ui_order__ = 4
+    __ui_order__ = 5
 
     enable_original_text: bool = Field(default=False, description="是否额外发送未经过人设解读的原始牌面文本")
     enable_keyword_fallback: bool = Field(
@@ -82,7 +104,7 @@ class PermissionsSection(PluginConfigBase):
 
     __ui_label__ = "权限"
     __ui_icon__ = "shield"
-    __ui_order__ = 5
+    __ui_order__ = 6
 
     admin_users: list[str] = Field(
         default_factory=list,
@@ -97,6 +119,7 @@ class TarotsConfig(PluginConfigBase):
     components: ComponentsSection = Field(default_factory=ComponentsSection)
     proxy: ProxySection = Field(default_factory=ProxySection)
     cards: CardsSection = Field(default_factory=CardsSection)
+    deck_pack: DeckPackSection = Field(default_factory=DeckPackSection)
     adjustment: AdjustmentSection = Field(default_factory=AdjustmentSection)
     permissions: PermissionsSection = Field(default_factory=PermissionsSection)
 

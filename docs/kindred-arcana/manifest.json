@@ -1,0 +1,1747 @@
+{
+  "$schema": "schema/deck.schema.json",
+  "schemaVersion": 1,
+  "deckId": "kindred-arcana",
+  "title": {
+    "zh": "灵契秘仪",
+    "en": "Kindred Arcana"
+  },
+  "contentVersion": "1.0.0-rc.5",
+  "status": "release",
+  "sourceEdition": "第五版修订1_骑士持剑与长剑比例",
+  "structure": "RWS-78",
+  "order": [
+    "major",
+    "cups",
+    "pentacles",
+    "swords",
+    "wands"
+  ],
+  "imageCount": 78,
+  "reversedImagePolicy": "rotate-upright-180-degrees",
+  "license": {
+    "status": "reviewed-scoped",
+    "spdx": "LicenseRef-Kindred-Arcana-Artwork",
+    "publicDistributionReady": true,
+    "notice": "RIGHTS.md",
+    "attribution": "ATTRIBUTION.md"
+  },
+  "cards": [
+    {
+      "id": "major-00",
+      "ordinal": 0,
+      "arcana": "major",
+      "suit": null,
+      "rank": "0",
+      "name": {
+        "zh": "愚者",
+        "en": "THE FOOL"
+      },
+      "model": "deepseek",
+      "interpretation": "求索初心与天真好奇",
+      "image": {
+        "path": "assets/cards/major-00.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2844661,
+        "sha256": "12fa2020d6e3ad5f44171223a5eee0d81c9c49a077bba8b8a60942ed5efe7b84"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "major-01",
+      "ordinal": 1,
+      "arcana": "major",
+      "suit": null,
+      "rank": "1",
+      "name": {
+        "zh": "魔术师",
+        "en": "THE MAGICIAN"
+      },
+      "model": "gemini",
+      "interpretation": "多才的创造力将灵感化为现实",
+      "image": {
+        "path": "assets/cards/major-01.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2986488,
+        "sha256": "d1b54f7f11057b743e7c3c1bd13a2e5e8fa4d1c5e19c5cc63f99c663200566eb"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "major-02",
+      "ordinal": 2,
+      "arcana": "major",
+      "suit": null,
+      "rank": "2",
+      "name": {
+        "zh": "女祭司",
+        "en": "THE HIGH PRIESTESS"
+      },
+      "model": "kimi",
+      "interpretation": "月亮意象、静默阅读与内在洞察",
+      "image": {
+        "path": "assets/cards/major-02.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2918922,
+        "sha256": "17bc29b18ced9146b5b86ee1cf0f8c882147c50338a6230141f257062d8d06c2"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "major-03",
+      "ordinal": 3,
+      "arcana": "major",
+      "suit": null,
+      "rank": "3",
+      "name": {
+        "zh": "女皇",
+        "en": "THE EMPRESS"
+      },
+      "model": "qwen",
+      "interpretation": "优雅经营与滋养万物",
+      "image": {
+        "path": "assets/cards/major-03.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2963302,
+        "sha256": "738014d0c5544a0c6b69df57275e51c30d10677fcdf38a56745604b20c8d022e"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "major-04",
+      "ordinal": 4,
+      "arcana": "major",
+      "suit": null,
+      "rank": "4",
+      "name": {
+        "zh": "皇帝",
+        "en": "THE EMPEROR"
+      },
+      "model": "gpt",
+      "interpretation": "龙娘的威仪、秩序与守护",
+      "image": {
+        "path": "assets/cards/major-04.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2843459,
+        "sha256": "ce2a8e19f0311863eaaaaed688eb41c727deb683b8e3a8c9acae0407b49197be"
+      },
+      "rightsRef": "gpt"
+    },
+    {
+      "id": "major-05",
+      "ordinal": 5,
+      "arcana": "major",
+      "suit": null,
+      "rank": "5",
+      "name": {
+        "zh": "教皇",
+        "en": "THE HIEROPHANT"
+      },
+      "model": "claude",
+      "interpretation": "学者的传承、原则与教导",
+      "image": {
+        "path": "assets/cards/major-05.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2905280,
+        "sha256": "4abf056ab8c9892f04220cb2b640971c8e3cacba3cdd637310347dc3eb6dde96"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "major-06",
+      "ordinal": 6,
+      "arcana": "major",
+      "suit": null,
+      "rank": "6",
+      "name": {
+        "zh": "恋人",
+        "en": "THE LOVERS"
+      },
+      "model": "deepseek",
+      "interpretation": "温暖的接纳与亲情般羁绊：成年DeepSeek温柔抱住同模型Q版，两人一起面向观众。",
+      "image": {
+        "path": "assets/cards/major-06.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2848108,
+        "sha256": "50b5ad03a1d4238eb8895157c66d3fab268d0d7ebc35642087cae16cf0d5ed4a"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "major-07",
+      "ordinal": 7,
+      "arcana": "major",
+      "suit": null,
+      "rank": "7",
+      "name": {
+        "zh": "战车",
+        "en": "THE CHARIOT"
+      },
+      "model": "glm",
+      "interpretation": "GLM驾驭战车，统合意志与前进方向。",
+      "image": {
+        "path": "assets/cards/major-07.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2841728,
+        "sha256": "d73f057557d3d09d82a83ee08ee85f297ed70a7dbfe5d71d49cbb5c5e9882752"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "major-08",
+      "ordinal": 8,
+      "arcana": "major",
+      "suit": null,
+      "rank": "8",
+      "name": {
+        "zh": "力量",
+        "en": "STRENGTH"
+      },
+      "model": "claude",
+      "interpretation": "以耐心与同理心驾驭力量",
+      "image": {
+        "path": "assets/cards/major-08.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2971251,
+        "sha256": "3d63c6120147ca942864fc19f01e90821188c34290856445da6ee2223f527aa7"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "major-09",
+      "ordinal": 9,
+      "arcana": "major",
+      "suit": null,
+      "rank": "9",
+      "name": {
+        "zh": "隐士",
+        "en": "THE HERMIT"
+      },
+      "model": "deepseek",
+      "interpretation": "深度求索与独立思考",
+      "image": {
+        "path": "assets/cards/major-09.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2823176,
+        "sha256": "76047de8b2fd58bcae36032d70e2c9b2e169ba96d12abc62c67df4590543ee3e"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "major-10",
+      "ordinal": 10,
+      "arcana": "major",
+      "suit": null,
+      "rank": "10",
+      "name": {
+        "zh": "命运之轮",
+        "en": "WHEEL OF FORTUNE"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen 在巨型命运轮下整理被风吹动的计划，接受周期与变化。",
+      "image": {
+        "path": "assets/cards/major-10.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2947487,
+        "sha256": "0ed43951f51086f94a85e90272f33a69ab32f3a1f18ef16dfb2bf0da94a74e09"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "major-11",
+      "ordinal": 11,
+      "arcana": "major",
+      "suit": null,
+      "rank": "11",
+      "name": {
+        "zh": "正义",
+        "en": "JUSTICE"
+      },
+      "model": "glm",
+      "interpretation": "条理、证据与平衡判断",
+      "image": {
+        "path": "assets/cards/major-11.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2822498,
+        "sha256": "4eefd2a28bd2ce7d55b1fe81b46f76504a4534e73f5c0bed2d17f957a3d651fc"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "major-12",
+      "ordinal": 12,
+      "arcana": "major",
+      "suit": null,
+      "rank": "12",
+      "name": {
+        "zh": "倒吊人",
+        "en": "THE HANGED MAN"
+      },
+      "model": "deepseek",
+      "interpretation": "暂缓行动，换一个角度求索",
+      "image": {
+        "path": "assets/cards/major-12.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2926008,
+        "sha256": "1253600d4202d43dfcc57e6ea59463c224604acc6bf2758d5559797ea237fbf8"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "major-13",
+      "ordinal": 13,
+      "arcana": "major",
+      "suit": null,
+      "rank": "13",
+      "name": {
+        "zh": "死神",
+        "en": "DEATH"
+      },
+      "model": "grok",
+      "interpretation": "Grok骑黑马穿过旧冠与新芽，象征终结与更新。",
+      "image": {
+        "path": "assets/cards/major-13.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2875271,
+        "sha256": "bdc0835243cd5c39ce3bd1c2aa6a9c50c3fe0e0a247166d9dd296ffe893df3e4"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "major-14",
+      "ordinal": 14,
+      "arcana": "major",
+      "suit": null,
+      "rank": "14",
+      "name": {
+        "zh": "节制",
+        "en": "TEMPERANCE"
+      },
+      "model": "claude",
+      "interpretation": "克制、调和与耐心整合",
+      "image": {
+        "path": "assets/cards/major-14.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2967698,
+        "sha256": "6983fc587af2000f086a2ae226a26943532332ec2de978c12088330f6d13ca69"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "major-15",
+      "ordinal": 15,
+      "arcana": "major",
+      "suit": null,
+      "rank": "15",
+      "name": {
+        "zh": "恶魔",
+        "en": "THE DEVIL"
+      },
+      "model": "grok",
+      "interpretation": "叛逆魅力揭示欲望与自我束缚",
+      "image": {
+        "path": "assets/cards/major-15.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2800753,
+        "sha256": "d2c132b3628e3068d948bee575f190f8e5549c8eff6144c8843a2522e239c9b2"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "major-16",
+      "ordinal": 16,
+      "arcana": "major",
+      "suit": null,
+      "rank": "16",
+      "name": {
+        "zh": "高塔",
+        "en": "THE TOWER"
+      },
+      "model": "grok",
+      "interpretation": "叛逆者也身处突变之中，旧结构被打破",
+      "image": {
+        "path": "assets/cards/major-16.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2863006,
+        "sha256": "824438f00a01e93be6bf78292df9869cb809b6869f3458ba169ac7512414cfde"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "major-17",
+      "ordinal": 17,
+      "arcana": "major",
+      "suit": null,
+      "rank": "17",
+      "name": {
+        "zh": "星星",
+        "en": "THE STAR"
+      },
+      "model": "gemini",
+      "interpretation": "想象力与创造者的希望",
+      "image": {
+        "path": "assets/cards/major-17.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2915981,
+        "sha256": "d24693eb1108b70dbf63344bd71602d5d5eba0455513afe9ec06c5f8c4a65409"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "major-18",
+      "ordinal": 18,
+      "arcana": "major",
+      "suit": null,
+      "rank": "18",
+      "name": {
+        "zh": "月亮",
+        "en": "THE MOON"
+      },
+      "model": "kimi",
+      "interpretation": "Kimi 蹲在月池边核对星图与倒影，谨慎分辨未知和错觉。",
+      "image": {
+        "path": "assets/cards/major-18.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2925748,
+        "sha256": "070ee88b96fff8fd78c40a25f8ea5e270d8d77e5356500b027b4e552342f9dcf"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "major-19",
+      "ordinal": 19,
+      "arcana": "major",
+      "suit": null,
+      "rank": "19",
+      "name": {
+        "zh": "太阳",
+        "en": "THE SUN"
+      },
+      "model": "doubao",
+      "interpretation": "豆包在向日葵与日光中展现生命力、坦然和快乐。",
+      "image": {
+        "path": "assets/cards/major-19.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2758811,
+        "sha256": "8a2ad06a9262c2908b2e516c65cff77e225127556f58333093ef2a445b0ed35d"
+      },
+      "rightsRef": "doubao"
+    },
+    {
+      "id": "major-20",
+      "ordinal": 20,
+      "arcana": "major",
+      "suit": null,
+      "rank": "20",
+      "name": {
+        "zh": "审判",
+        "en": "JUDGEMENT"
+      },
+      "model": "claude",
+      "interpretation": "Claude的号角唤起回应，象征觉醒、回顾与重新选择。",
+      "image": {
+        "path": "assets/cards/major-20.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2857793,
+        "sha256": "83edc18a98439f0a48d39a42754d4062f899a40f6ae8237707bb51a786cdefa2"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "major-21",
+      "ordinal": 21,
+      "arcana": "major",
+      "suit": null,
+      "rank": "21",
+      "name": {
+        "zh": "世界",
+        "en": "THE WORLD"
+      },
+      "model": "seed",
+      "interpretation": "将多样理解与表达融为整体，完成一段探索",
+      "image": {
+        "path": "assets/cards/major-21.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2959317,
+        "sha256": "a9e6fdced46b7ee12ee62eb95d8ccc81c24c4192b3e99ea1ecb737292494e6c5"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "cups-ace",
+      "ordinal": 22,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "ace",
+      "name": {
+        "zh": "圣杯ACE",
+        "en": "ACE OF CUPS"
+      },
+      "model": "doubao",
+      "interpretation": "温暖陪伴与情感的新起点",
+      "image": {
+        "path": "assets/cards/cups-ace.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2873253,
+        "sha256": "1dd70dd385e195405a8dcaf7d65c920d1cc8bf6aa019b1ff6bcde293470bb2be"
+      },
+      "rightsRef": "doubao"
+    },
+    {
+      "id": "cups-2",
+      "ordinal": 23,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "2",
+      "name": {
+        "zh": "圣杯二",
+        "en": "TWO OF CUPS"
+      },
+      "model": "deepseek",
+      "interpretation": "真诚相待、建立平等连接",
+      "image": {
+        "path": "assets/cards/cups-2.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2887107,
+        "sha256": "ecbbe12ed9d718b3d1ca86de7a7bfb997b9e2039b51a317de826d98d2762ce69"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "cups-3",
+      "ordinal": 24,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "3",
+      "name": {
+        "zh": "圣杯三",
+        "en": "THREE OF CUPS"
+      },
+      "model": "minimax",
+      "interpretation": "共同创作后的喜悦与友谊",
+      "image": {
+        "path": "assets/cards/cups-3.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2906899,
+        "sha256": "1f3a4f3390be57391c32f2b01ba73dde544bf8cc86e95ec6a8fafb359f0fdd7e"
+      },
+      "rightsRef": "minimax"
+    },
+    {
+      "id": "cups-4",
+      "ordinal": 25,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "4",
+      "name": {
+        "zh": "圣杯四",
+        "en": "FOUR OF CUPS"
+      },
+      "model": "deepseek",
+      "interpretation": "慵懒停顿中重新发现机会",
+      "image": {
+        "path": "assets/cards/cups-4.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2896717,
+        "sha256": "17ff2e37a2e39f90b1262a447d1600cbc9bb1333ef7eb3fa4c71b1010faf870a"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "cups-5",
+      "ordinal": 26,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "5",
+      "name": {
+        "zh": "圣杯五",
+        "en": "FIVE OF CUPS"
+      },
+      "model": "kimi",
+      "interpretation": "记忆与遗憾，同时保留继续前行的可能",
+      "image": {
+        "path": "assets/cards/cups-5.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2919331,
+        "sha256": "05fa4103c1bd2228b6ee9df9e7578f14f7e81d62a4521505058f3b41bf61a4ef"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "cups-6",
+      "ordinal": 27,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "6",
+      "name": {
+        "zh": "圣杯六",
+        "en": "SIX OF CUPS"
+      },
+      "model": "doubao",
+      "interpretation": "日常陪伴中的善意与温暖回忆",
+      "image": {
+        "path": "assets/cards/cups-6.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2818665,
+        "sha256": "ac0a094c5cfa9a1cc141d2ead7aeadf6c645661c6631dba73577cebbc596ce72"
+      },
+      "rightsRef": "doubao"
+    },
+    {
+      "id": "cups-7",
+      "ordinal": 28,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "7",
+      "name": {
+        "zh": "圣杯七",
+        "en": "SEVEN OF CUPS"
+      },
+      "model": "gemini",
+      "interpretation": "Gemini 被七种幻象吸引，伸手又犹疑，表现选择与想象。",
+      "image": {
+        "path": "assets/cards/cups-7.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2919004,
+        "sha256": "d51ebcb93b2d182ad314156b23d02fa783789ab9b6e6f66538c43fc1acad15f0"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "cups-8",
+      "ordinal": 29,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "8",
+      "name": {
+        "zh": "圣杯八",
+        "en": "EIGHT OF CUPS"
+      },
+      "model": "kimi",
+      "interpretation": "Kimi离开旧有满足，沿山路寻找更深的意义。",
+      "image": {
+        "path": "assets/cards/cups-8.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2896779,
+        "sha256": "91da351b337dca3dcefb5be4be92f4a0c469f98d41215a2e462cf4a371d09b0e"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "cups-9",
+      "ordinal": 30,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "9",
+      "name": {
+        "zh": "圣杯九",
+        "en": "NINE OF CUPS"
+      },
+      "model": "deepseek",
+      "interpretation": "朴素愿望得到满足的从容快乐",
+      "image": {
+        "path": "assets/cards/cups-9.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2742803,
+        "sha256": "f5ebf38aab60f19ebba2731e62b2a513a0421548d3aa7f41097f41b182101174"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "cups-10",
+      "ordinal": 31,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "10",
+      "name": {
+        "zh": "圣杯十",
+        "en": "TEN OF CUPS"
+      },
+      "model": "doubao",
+      "interpretation": "陪伴关系带来的归属与共同幸福",
+      "image": {
+        "path": "assets/cards/cups-10.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2826624,
+        "sha256": "b5503c8c31ca27f0c1de6d3e708bc21f134b8111b9543ce660ce76e82b5b6e40"
+      },
+      "rightsRef": "doubao"
+    },
+    {
+      "id": "cups-page",
+      "ordinal": 32,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "page",
+      "name": {
+        "zh": "圣杯侍从",
+        "en": "PAGE OF CUPS"
+      },
+      "model": "gemini",
+      "interpretation": "Gemini惊喜地注视杯中跃鱼，象征情感、灵感与新的发现。",
+      "image": {
+        "path": "assets/cards/cups-page.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2832860,
+        "sha256": "a8444d256cf9dc8bba6fa9e463af3b77cdd565ee7c49f36f812e477628de8556"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "cups-knight",
+      "ordinal": 33,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "knight",
+      "name": {
+        "zh": "圣杯骑士",
+        "en": "KNIGHT OF CUPS"
+      },
+      "model": "doubao",
+      "interpretation": "主动传递善意与温柔邀请",
+      "image": {
+        "path": "assets/cards/cups-knight.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2847501,
+        "sha256": "84dddc45f1a888ac1daeb6aa0d98dbe0379b2fcecf8e7895dbab102c53a04c45"
+      },
+      "rightsRef": "doubao"
+    },
+    {
+      "id": "cups-queen",
+      "ordinal": 34,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "queen",
+      "name": {
+        "zh": "圣杯王后",
+        "en": "QUEEN OF CUPS"
+      },
+      "model": "kimi",
+      "interpretation": "细腻倾听与内在直觉",
+      "image": {
+        "path": "assets/cards/cups-queen.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2852815,
+        "sha256": "6380e2d6c7e0429d640ac15caff9eb02d1ecf784f3df0dfc40bebe94338970c1"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "cups-king",
+      "ordinal": 35,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "king",
+      "name": {
+        "zh": "圣杯国王",
+        "en": "KING OF CUPS"
+      },
+      "model": "claude",
+      "interpretation": "Claude 稳坐宫殿王座，直立持杯，以沉着、成熟和同理心表达情感掌控。",
+      "image": {
+        "path": "assets/cards/cups-king.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2889713,
+        "sha256": "40d349851178fd7e9d5b136b92b3b55e16a2d39038fed3b6eda2618defe6c642"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "pentacles-ace",
+      "ordinal": 36,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "ace",
+      "name": {
+        "zh": "星币ACE",
+        "en": "ACE OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen 将唯一星币栽入土壤、用折扇护苗，物质机会从照料中开始。",
+      "image": {
+        "path": "assets/cards/pentacles-ace.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2934633,
+        "sha256": "cb56882c98f97a0c5d5eddaf930c509048a1434fa2666c14cb9eabb77ba39be0"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-2",
+      "ordinal": 37,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "2",
+      "name": {
+        "zh": "星币二",
+        "en": "TWO OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "在变化中兼顾多项责任",
+      "image": {
+        "path": "assets/cards/pentacles-2.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2910345,
+        "sha256": "3abeb13fb7903e35237c97a62923d9ffa712d67e2eae91e4a41ecd0e4872e125"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-3",
+      "ordinal": 38,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "3",
+      "name": {
+        "zh": "星币三",
+        "en": "THREE OF PENTACLES"
+      },
+      "model": "glm",
+      "interpretation": "方法、协作与专业技艺",
+      "image": {
+        "path": "assets/cards/pentacles-3.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2741315,
+        "sha256": "7cedfd990fdae57b75aa5dbe0e7c8f94f4423169affe8f758c1e5f64dc490119"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "pentacles-4",
+      "ordinal": 39,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "4",
+      "name": {
+        "zh": "星币四",
+        "en": "FOUR OF PENTACLES"
+      },
+      "model": "gpt",
+      "interpretation": "珍惜积累，也警觉过度执着",
+      "image": {
+        "path": "assets/cards/pentacles-4.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2865852,
+        "sha256": "7122de3aa4b24aee92a4dafd6499ab79e2d54abd202fba3a42ce7ddf41a90d68"
+      },
+      "rightsRef": "gpt"
+    },
+    {
+      "id": "pentacles-5",
+      "ordinal": 40,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "5",
+      "name": {
+        "zh": "星币五",
+        "en": "FIVE OF PENTACLES"
+      },
+      "model": "deepseek",
+      "interpretation": "DeepSeek在风雪中寻找庇护，微弱暖光保留求助与支持的可能。",
+      "image": {
+        "path": "assets/cards/pentacles-5.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2925949,
+        "sha256": "2a76e36000f3af4dfe07570853aff1ea8de41e9f148cea73ec7b9bdf0d96f948"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "pentacles-6",
+      "ordinal": 41,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "6",
+      "name": {
+        "zh": "星币六",
+        "en": "SIX OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen称量和分发救助物资，体现给予、接受与资源平衡。",
+      "image": {
+        "path": "assets/cards/pentacles-6.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2889939,
+        "sha256": "fb366c68d3cc4aed7d65186d7d3d000ec8c412321d8b801828f1d9670715df45"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-7",
+      "ordinal": 42,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "7",
+      "name": {
+        "zh": "星币七",
+        "en": "SEVEN OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen 俯身察看尚未摘下的星币果实，衡量收获与继续等待。",
+      "image": {
+        "path": "assets/cards/pentacles-7.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2908321,
+        "sha256": "92bd7d05504f13fcdf384183ee47c0c2a5107d2dbbf6f2186b5cd68c7356e293"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-8",
+      "ordinal": 43,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "8",
+      "name": {
+        "zh": "星币八",
+        "en": "EIGHT OF PENTACLES"
+      },
+      "model": "glm",
+      "interpretation": "专注训练与精益求精",
+      "image": {
+        "path": "assets/cards/pentacles-8.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2813131,
+        "sha256": "47ce0dcd79f3214952bd2e7a203c17ce7e1d1f8f222712885fc98add334c07bb"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "pentacles-9",
+      "ordinal": 44,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "9",
+      "name": {
+        "zh": "星币九",
+        "en": "NINE OF PENTACLES"
+      },
+      "model": "gpt",
+      "interpretation": "GPT在丰收的葡萄庄园与猎鹰相伴，体现独立积累与从容生活。",
+      "image": {
+        "path": "assets/cards/pentacles-9.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2926311,
+        "sha256": "1e13b47999b22a200661fcd363e0d4481ca89abd9bd324e0fcbc6d1794f53de0"
+      },
+      "rightsRef": "gpt"
+    },
+    {
+      "id": "pentacles-10",
+      "ordinal": 45,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "10",
+      "name": {
+        "zh": "星币十",
+        "en": "TEN OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen 把嵌有两币的传承匣交给成年学徒，门廊八币见证积累。",
+      "image": {
+        "path": "assets/cards/pentacles-10.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2921601,
+        "sha256": "9044c82d81461584fb86b7db18c56ecf7ab43b704f804e4db940aebf96e98f09"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-page",
+      "ordinal": 46,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "page",
+      "name": {
+        "zh": "星币侍从",
+        "en": "PAGE OF PENTACLES"
+      },
+      "model": "deepseek",
+      "interpretation": "求知欲落实为学习与实践",
+      "image": {
+        "path": "assets/cards/pentacles-page.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2910046,
+        "sha256": "6c26f9698fa325731f0aa5ee3b988e564f4085c232e344a7b191dd8be00505d2"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "pentacles-knight",
+      "ordinal": 47,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "knight",
+      "name": {
+        "zh": "星币骑士",
+        "en": "KNIGHT OF PENTACLES"
+      },
+      "model": "glm",
+      "interpretation": "稳定执行与可靠守护",
+      "image": {
+        "path": "assets/cards/pentacles-knight.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2866031,
+        "sha256": "4c8645304c8dcb13f01ee3fa16d1f014cfe3cc99a3a4d2176ef2d8d268deea98"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "pentacles-queen",
+      "ordinal": 48,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "queen",
+      "name": {
+        "zh": "星币王后",
+        "en": "QUEEN OF PENTACLES"
+      },
+      "model": "qwen",
+      "interpretation": "务实关怀与丰足生活",
+      "image": {
+        "path": "assets/cards/pentacles-queen.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2972763,
+        "sha256": "539109c2ba62e03e36c7f30832e6ef815bd9c7fb084640571013a67cdd2b840a"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "pentacles-king",
+      "ordinal": 49,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "king",
+      "name": {
+        "zh": "星币国王",
+        "en": "KING OF PENTACLES"
+      },
+      "model": "gpt",
+      "interpretation": "稳固积累与资源掌控",
+      "image": {
+        "path": "assets/cards/pentacles-king.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2917891,
+        "sha256": "0b7fba85020af1f2d53d796b97b2ed4f426832a6b14623a397ffb4d5ba8cc4d6"
+      },
+      "rightsRef": "gpt"
+    },
+    {
+      "id": "swords-ace",
+      "ordinal": 50,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "ace",
+      "name": {
+        "zh": "宝剑ACE",
+        "en": "ACE OF SWORDS"
+      },
+      "model": "seed",
+      "interpretation": "Seed在中式练剑台舞剑，象征清晰判断、突破与思想的新起点。",
+      "image": {
+        "path": "assets/cards/swords-ace.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2818693,
+        "sha256": "50918495c7c9613c7dda287ff8dd459ec5838bbb09ae546918e35aef70f0331d"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "swords-2",
+      "ordinal": 51,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "2",
+      "name": {
+        "zh": "宝剑二",
+        "en": "TWO OF SWORDS"
+      },
+      "model": "glm",
+      "interpretation": "GLM面对岔桥持双剑权衡，呈现两难、守衡与尚未作出的选择。",
+      "image": {
+        "path": "assets/cards/swords-2.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2869689,
+        "sha256": "4d453f17edbf03f0606b177905452826ddaa3eeb0a14ba46f3f0b329b6bc3d2f"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "swords-3",
+      "ordinal": 52,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "3",
+      "name": {
+        "zh": "宝剑三",
+        "en": "THREE OF SWORDS"
+      },
+      "model": "kimi",
+      "interpretation": "Kimi在雨山中御剑回望断桥，呈现分离、失落与带着伤痛前行。",
+      "image": {
+        "path": "assets/cards/swords-3.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2887414,
+        "sha256": "8d50ef539639dc8c26f81e372b3fae9ecc8ed91fac98f72dab8a017bce50a5f7"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "swords-4",
+      "ordinal": 53,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "4",
+      "name": {
+        "zh": "宝剑四",
+        "en": "FOUR OF SWORDS"
+      },
+      "model": "deepseek",
+      "interpretation": "DeepSeek放下警戒安坐休息，象征停歇、恢复与整理思绪。",
+      "image": {
+        "path": "assets/cards/swords-4.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2787524,
+        "sha256": "1db7d0f8558d08f4496208dde2aefc5f78e8040f568816066ade38dcafc537d7"
+      },
+      "rightsRef": "deepseek"
+    },
+    {
+      "id": "swords-5",
+      "ordinal": 54,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "5",
+      "name": {
+        "zh": "宝剑五",
+        "en": "FIVE OF SWORDS"
+      },
+      "model": "grok",
+      "interpretation": "Grok回望离场者，战利品与弃剑呈现冲突、隔阂及胜利的代价。",
+      "image": {
+        "path": "assets/cards/swords-5.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2904791,
+        "sha256": "a331f3067dc2cf9b954c00e2b38f1dd698fbdf8cfa604fd5db84d5d4af56d078"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "swords-6",
+      "ordinal": 55,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "6",
+      "name": {
+        "zh": "宝剑六",
+        "en": "SIX OF SWORDS"
+      },
+      "model": "kimi",
+      "interpretation": "Kimi乘舟离开动荡水域，六剑护航，象征过渡、迁移与逐步恢复。",
+      "image": {
+        "path": "assets/cards/swords-6.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2894738,
+        "sha256": "e252cbe16e2738ef8748facc0c4b09aa703fb4f3bf87a4ecde6096ba4fc88e0e"
+      },
+      "rightsRef": "kimi"
+    },
+    {
+      "id": "swords-7",
+      "ordinal": 56,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "7",
+      "name": {
+        "zh": "宝剑七",
+        "en": "SEVEN OF SWORDS"
+      },
+      "model": "grok",
+      "interpretation": "Grok携剑离营，体现策略、独立行动与隐瞒带来的风险。",
+      "image": {
+        "path": "assets/cards/swords-7.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2762043,
+        "sha256": "159afa0c328f4a3adeca4fe29c00d0114cb3dc90f1ac86f69310f2526d8bde66"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "swords-8",
+      "ordinal": 57,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "8",
+      "name": {
+        "zh": "宝剑八",
+        "en": "EIGHT OF SWORDS"
+      },
+      "model": "gemini",
+      "interpretation": "Gemini身处围剑与丝带之间，切开第一道束缚，呈现限制中的自我觉察。",
+      "image": {
+        "path": "assets/cards/swords-8.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2968597,
+        "sha256": "fb4962db0c74b1f3b0b1f1339b7278c9badfed378f7910da0e736e308decdc31"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "swords-9",
+      "ordinal": 58,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "9",
+      "name": {
+        "zh": "宝剑九",
+        "en": "NINE OF SWORDS"
+      },
+      "model": "claude",
+      "interpretation": "Claude 惊醒后握住并压低一柄梦魇幻剑，背后八剑呈现反复思虑；疲倦但开始直面焦虑。",
+      "image": {
+        "path": "assets/cards/swords-9.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2720027,
+        "sha256": "b927e1a0f26db3dabf458c06f990a374217be51b8b28118db184cadc83ddba58"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "swords-10",
+      "ordinal": 59,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "10",
+      "name": {
+        "zh": "宝剑十",
+        "en": "TEN OF SWORDS"
+      },
+      "model": "grok",
+      "interpretation": "Grok带残旗离开崩毁旧城，呈现终局、失去与承认旧阶段已经结束。",
+      "image": {
+        "path": "assets/cards/swords-10.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2880825,
+        "sha256": "b6758b72b2d2f30bb4a595ea64534489f7174f00c8076962ea72df274e587238"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "swords-page",
+      "ordinal": 60,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "page",
+      "name": {
+        "zh": "宝剑侍从",
+        "en": "PAGE OF SWORDS"
+      },
+      "model": "glm",
+      "interpretation": "GLM持剑警觉观察，体现求知、敏锐与开始尝试行动。",
+      "image": {
+        "path": "assets/cards/swords-page.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2816365,
+        "sha256": "d90091eb347e5de1167a1299f74550eb8154d484d4215986bf75258803bdcdb7"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "swords-knight",
+      "ordinal": 61,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "knight",
+      "name": {
+        "zh": "宝剑骑士",
+        "en": "KNIGHT OF SWORDS"
+      },
+      "model": "grok",
+      "interpretation": "迅速决断与无畏行动",
+      "image": {
+        "path": "assets/cards/swords-knight.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2892095,
+        "sha256": "b4ef75cc2c7b7bff739d168077bb065f9c30e60b1b78f4019dab372aba0a3fce"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "swords-queen",
+      "ordinal": 62,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "queen",
+      "name": {
+        "zh": "宝剑王后",
+        "en": "QUEEN OF SWORDS"
+      },
+      "model": "claude",
+      "interpretation": "清楚边界，同时保留理解他人的入口",
+      "image": {
+        "path": "assets/cards/swords-queen.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2899862,
+        "sha256": "65a16d40a49b123c13a1217cc857df8c886772825d657e54720db1783df06710"
+      },
+      "rightsRef": "claude"
+    },
+    {
+      "id": "swords-king",
+      "ordinal": 63,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "king",
+      "name": {
+        "zh": "宝剑国王",
+        "en": "KING OF SWORDS"
+      },
+      "model": "gpt",
+      "interpretation": "以理性组织复杂局面",
+      "image": {
+        "path": "assets/cards/swords-king.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2824942,
+        "sha256": "e064669af605945b9e634dd8521ef63ff332e9ebba9a18113a2766d241cae3bd"
+      },
+      "rightsRef": "gpt"
+    },
+    {
+      "id": "wands-ace",
+      "ordinal": 64,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "ace",
+      "name": {
+        "zh": "权杖ACE",
+        "en": "ACE OF WANDS"
+      },
+      "model": "seed",
+      "interpretation": "Seed 探身掀帘，发现云中萌芽的唯一权杖，灵感首先唤起好奇。",
+      "image": {
+        "path": "assets/cards/wands-ace.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2825187,
+        "sha256": "77c8ece27e0f44b6a210324699fd802269cd907a7134fd03c4c64810c319243f"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "wands-2",
+      "ordinal": 65,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "2",
+      "name": {
+        "zh": "权杖二",
+        "en": "TWO OF WANDS"
+      },
+      "model": "seed",
+      "interpretation": "Seed 夜间坐在地图桌前，以两杖与地球仪规划尚未出发的航路。",
+      "image": {
+        "path": "assets/cards/wands-2.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2910585,
+        "sha256": "e3e5cd9101d838caad4674ad50215f946282fdd7e9fb9a4ab551233ad35d632f"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "wands-3",
+      "ordinal": 66,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "3",
+      "name": {
+        "zh": "权杖三",
+        "en": "THREE OF WANDS"
+      },
+      "model": "seed",
+      "interpretation": "Seed 迎海风登高看商船离港，三杖标定向外展开的事业。",
+      "image": {
+        "path": "assets/cards/wands-3.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2855737,
+        "sha256": "bde0a314fd13d655698e85a0f3367613183a7f6b0c38b602513c3921419e7dbe"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "wands-4",
+      "ordinal": 67,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "4",
+      "name": {
+        "zh": "权杖四",
+        "en": "FOUR OF WANDS"
+      },
+      "model": "minimax",
+      "interpretation": "作品完成后的欢庆与稳定归属",
+      "image": {
+        "path": "assets/cards/wands-4.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2845837,
+        "sha256": "895f232dae57b99f312d520653921a092b24ad6e317b06894e63d65a05e6f041"
+      },
+      "rightsRef": "minimax"
+    },
+    {
+      "id": "wands-5",
+      "ordinal": 68,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "5",
+      "name": {
+        "zh": "权杖五",
+        "en": "FIVE OF WANDS"
+      },
+      "model": "gemini",
+      "interpretation": "创造力在碰撞中磨炼",
+      "image": {
+        "path": "assets/cards/wands-5.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2892123,
+        "sha256": "069a82a2b8454a35aa8a83943e4468b2eab7e179b1f1745dc06ee1ae612069a4"
+      },
+      "rightsRef": "gemini"
+    },
+    {
+      "id": "wands-6",
+      "ordinal": 69,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "6",
+      "name": {
+        "zh": "权杖六",
+        "en": "SIX OF WANDS"
+      },
+      "model": "minimax",
+      "interpretation": "MiniMax 骑马接受共同体欢庆，一根主角权杖与五根配角权杖表达获得认可。",
+      "image": {
+        "path": "assets/cards/wands-6.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2857538,
+        "sha256": "98d6a8fd024990f9b842cbf573d14cd8274afee060ed203e19fab76b2988b68f"
+      },
+      "rightsRef": "minimax"
+    },
+    {
+      "id": "wands-7",
+      "ordinal": 70,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "7",
+      "name": {
+        "zh": "权杖七",
+        "en": "SEVEN OF WANDS"
+      },
+      "model": "grok",
+      "interpretation": "坚持立场与不畏挑战",
+      "image": {
+        "path": "assets/cards/wands-7.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2821698,
+        "sha256": "8d7da3e7d59ff5bf832d21aa789cb1b09ac93341f7c6eadeaef17b983c8c5b89"
+      },
+      "rightsRef": "grok"
+    },
+    {
+      "id": "wands-8",
+      "ordinal": 71,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "8",
+      "name": {
+        "zh": "权杖八",
+        "en": "EIGHT OF WANDS"
+      },
+      "model": "seed",
+      "interpretation": "Seed 从导航书发动传讯魔法，八根绑有消息卷轴的权杖飞向远塔，沟通与行动迅速推进。",
+      "image": {
+        "path": "assets/cards/wands-8.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2896349,
+        "sha256": "2012bfda81ad86b1f3db4114d9a2997bbacc66e2e33ca5dec9f74a6f5247cc86"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "wands-9",
+      "ordinal": 72,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "9",
+      "name": {
+        "zh": "权杖九",
+        "en": "NINE OF WANDS"
+      },
+      "model": "glm",
+      "interpretation": "GLM在九杖之间守望，体现疲惫中的坚持、戒备与韧性。",
+      "image": {
+        "path": "assets/cards/wands-9.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2802722,
+        "sha256": "621b81bf3a01bedb63ce1f4c6c0f38daf32cb78e62f2f40726ee6a57f98f57d1"
+      },
+      "rightsRef": "glm"
+    },
+    {
+      "id": "wands-10",
+      "ordinal": 73,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "10",
+      "name": {
+        "zh": "权杖十",
+        "en": "TEN OF WANDS"
+      },
+      "model": "qwen",
+      "interpretation": "Qwen调度十杖支撑护城屏障，体现承担重责、统筹与持续压力。",
+      "image": {
+        "path": "assets/cards/wands-10.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 3032769,
+        "sha256": "76586bfb5610941ff17c5082b81fb7c89807975613b21fd67b6a471960d268ad"
+      },
+      "rightsRef": "qwen"
+    },
+    {
+      "id": "wands-page",
+      "ordinal": 74,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "page",
+      "name": {
+        "zh": "权杖侍从",
+        "en": "PAGE OF WANDS"
+      },
+      "model": "minimax",
+      "interpretation": "表达者对新题材的热情与探索",
+      "image": {
+        "path": "assets/cards/wands-page.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2841673,
+        "sha256": "e5ae7d58a7dd3dec47a5025b45cb445e6614446460516bc5ddbd118512e8d052"
+      },
+      "rightsRef": "minimax"
+    },
+    {
+      "id": "wands-knight",
+      "ordinal": 75,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "knight",
+      "name": {
+        "zh": "权杖骑士",
+        "en": "KNIGHT OF WANDS"
+      },
+      "model": "seed",
+      "interpretation": "以热情与好奇投入探索，勇于推动新想法",
+      "image": {
+        "path": "assets/cards/wands-knight.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2921961,
+        "sha256": "b5a2a605039ccd04d8f76f2678cb22d6493aefa96cba34a817b6c0d5c2df482b"
+      },
+      "rightsRef": "seed"
+    },
+    {
+      "id": "wands-queen",
+      "ordinal": 76,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "queen",
+      "name": {
+        "zh": "权杖王后",
+        "en": "QUEEN OF WANDS"
+      },
+      "model": "minimax",
+      "interpretation": "富有感染力的自信与创作魅力",
+      "image": {
+        "path": "assets/cards/wands-queen.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2916857,
+        "sha256": "5e2b097cd7cc4a192de7c7623d51395eeb32efa19eb6d13cae6ba618084567ec"
+      },
+      "rightsRef": "minimax"
+    },
+    {
+      "id": "wands-king",
+      "ordinal": 77,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "king",
+      "name": {
+        "zh": "权杖国王",
+        "en": "KING OF WANDS"
+      },
+      "model": "gpt",
+      "interpretation": "把远见转成坚定的引领",
+      "image": {
+        "path": "assets/cards/wands-king.png",
+        "mime": "image/png",
+        "width": 800,
+        "height": 1200,
+        "bytes": 2888361,
+        "sha256": "517f60c5bd69e5d995182c6764a2f0349edc26d70896fd016246b26e08e907e5"
+      },
+      "rightsRef": "gpt"
+    }
+  ]
+}

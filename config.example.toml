@@ -1,6 +1,6 @@
 [plugin]
 enabled = true
-config_version = "2.0.0"
+config_version = "2.1.0"
 
 [components]
 # 抽牌工具 + 关键词兜底
@@ -19,6 +19,15 @@ using_cards = "classical"
 # 允许使用的牌组。bilibili（B站幻星集）与 east（东方）涉及第三方角色/二创授权，
 # 默认不启用；确认你有使用权后可以加进这个列表。
 use_cards = ["classical", "elaine"]
+
+[deck_pack]
+# 灵契秘仪：独立牌组资源包。首次切换时从固定版本 Release 下载，校验 manifest 与 78 张图片摘要后本地缓存，
+# 之后抽牌/重启均离线可用；下载失败可用 /tarots import <本地zip> 导入同一版本。
+enabled = true
+kindred_arcana_enabled = true
+auto_download = true
+# 留空使用内置固定地址；镜像/测试时才填写（仍会校验固定摘要）
+download_url = ""
 
 [adjustment]
 # 额外发送未经人设解读的原始牌面文本
