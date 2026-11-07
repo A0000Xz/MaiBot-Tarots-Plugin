@@ -244,8 +244,11 @@ def deck_card_range(deck: dict[str, Any], card_type: str) -> list[str]:
 
 
 def deck_display_name(deck_id: str, deck: dict[str, Any]) -> str:
-    """牌组展示名。"""
+    """牌组展示名：优先 _meta.name，其次 description。"""
 
+    name = str(deck["meta"].get("name") or "").strip()
+    if name:
+        return f"{name}（{deck_id}）"
     description = str(deck["meta"].get("description") or "").strip()
     if description:
         return f"{deck_id}（{description}）"

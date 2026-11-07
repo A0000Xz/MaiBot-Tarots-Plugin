@@ -11,7 +11,7 @@
 | 插件 ID | `github.a0000xz.maibot-tarots-plugin` |
 | 原作者 | A肆零西烛（GitHub: [A0000Xz](https://github.com/A0000Xz)，1.x 版本作者；2.0.0 参与架构设计与代码 review） |
 | 维护者 | A肆零西烛 × [NethielChou](https://github.com/NethielChou)（2.0.0 起共同维护；市场作者字段按规则保留原作者） |
-| 版本 | 2.0.0 |
+| 版本 | 2.1.0 |
 | 类型 | 娱乐扩展 |
 | 许可证 | [AGPL-3.0](LICENSE) |
 | 支持版本 | MaiBot 1.3.13 – 1.3.99 / 插件 SDK 2.16.0 – 2.99.99 |
@@ -37,6 +37,7 @@
 - **桌布风牌阵布局图**：多张牌阵拼成一张塔罗桌布背景的布局图（渐变紫布 + 星点 + 星座 + 日月符号 + 织纹）；单张抽牌直接发牌面原图，一眼区分「单抽」和「牌阵」
 - **可自定义牌阵**：管理员群里一句 `/tarots newformation` 就能新建牌阵，或手写 `formations.json`，即时生效
 - **多套牌组**：默认两套公版韦特（`classical` / `elaine`），支持切换、缓存、代理；版权受限牌组默认锁定，确认使用权后自助解锁
+- **灵契秘仪（Kindred Arcana）原创牌组**：78 张原创牌面，独立牌组仓库固定版本 Release 分发；首次启用自动下载并校验 manifest/78 图摘要，之后离线缓存；下载失败可用 `/tarots import` 本地导入
 - **占卜追问**：记住最近一次抽牌 10 分钟，接着问「刚才那张牌什么意思」不用重抽
 - **每日一牌**：`/tarots daily` 同一天同一人抽到同一张，所有人可用
 - **卡面缓存**：图片首次抽到才下载并缓存，之后不再联网
@@ -93,7 +94,8 @@
 | `/tarots switch <牌组名>` | 管理员 | 切换当前牌组（需已启用） |
 | `/tarots allow <牌组名>` | 管理员 | 确认使用权后解锁带 🔒 的牌组 |
 | `/tarots lock <牌组名>` | 管理员 | 撤销解锁 |
-| `/tarots cache` | 管理员 | 预下载当前牌组全部卡面（首次使用建议先跑一次） |
+| `/tarots cache` | 管理员 | 预下载当前牌组全部卡面（首次使用建议先跑一次；灵契秘仪为本地校验）
+| `/tarots import <zip>` | 管理员 | 本地导入灵契秘仪资源包（下载失败时的回退） |
 
 管理员 QQ 号填在配置 `[permissions] admin_users`。`/tarots list` 会把已启用牌组排在前面、带锁牌组排在后面，并附版权说明；解锁记录保存在插件 data 目录的 `state.json`，重启不丢。
 
@@ -124,9 +126,11 @@
 | `classical` 经典韦特 | 78 | 韦特塔罗原版已进入公有领域；图源仓库为 MIT | ✅ 启用 |
 | `elaine` Elaine 韦特公版 | 78 | Rider-Waite-Smith 公版牌面（1909）；图源仓库仅托管公版扫描图 | ✅ 启用 |
 | `bilibili` B站幻星集 | 78 | **2233 娘形象版权归 B 站**，非开放版权，仅限个人非商业娱乐 | ⛔ 默认关闭 |
+| `kindred-arcana` 灵契秘仪 | 78 | **原创牌组**（AI 辅助创作、人工筛选修订）；图片在独立仓库固定版本 Release 分发，插件只含元数据；牌面许可见牌组仓库 `LICENSE-ARTWORK.md` | ✅ 可选（首次切换下载） |
 | `east` 东方塔罗 | 22 | 东方 Project 二次创作，需遵守 ZUN 二创规约（非商业、注明来源） | ⛔ 默认关闭 |
 
 - 默认启用 `classical` 与 `elaine`（都是公版韦特）
+- 灵契秘仪是**可选牌组**：`/tarots switch kindred-arcana` 首次会下载固定版本资源包并校验，之后离线可用；`/tarots list` 会显示安装/版本状态
 - 带 🔒 的牌组是**锁定**的：`/tarots list` 会显示版权说明；直接 `/tarots switch` 会被拒绝并提示原因
 - 确认你拥有某套牌的使用权（或属于非商业允许场景）后，执行 `/tarots allow <牌组名>` 解锁切换与缓存；`/tarots lock <牌组名>` 撤销
 - 也可以在配置 `[cards] use_cards` 里直接写入牌组名永久启用
@@ -198,13 +202,17 @@ WebUI 插件设置页按 **「常用 / 抽牌 / 高级」** 三个页签组织�
 | 配置项 | 默认 | 说明 |
 |---|---|---|
 | `plugin.enabled` | `true` | 是否启用 |
-| `plugin.config_version` | `2.0.0` | 配置版本，由插件维护 |
+| `plugin.config_version` | `2.1.0` | 配置版本，由插件维护 |
 | `components.enable_tarots` | `true` | 抽牌工具 + 关键词兜底 |
 | `components.enable_commands` | `true` | `/tarots` 指令 |
 | `proxy.enable_proxy` | `false` | 下载卡面时用代理 |
 | `proxy.proxy_url` | `""` | 代理地址 |
 | `cards.using_cards` | `classical` | 默认牌组 |
 | `cards.use_cards` | `["classical","elaine"]` | 允许使用的牌组 |
+| `deck_pack.enabled` | `true` | 启用独立牌组资源包功能 |
+| `deck_pack.kindred_arcana_enabled` | `true` | 牌组列表显示「灵契秘仪」 |
+| `deck_pack.auto_download` | `true` | 首次切换自动下载固定版本资源包 |
+| `deck_pack.download_url` | `""` | 留空使用内置固定地址；镜像/测试时才填 |
 | `adjustment.enable_original_text` | `false` | 额外发送原始牌面文本 |
 | `adjustment.enable_keyword_fallback` | `true` | 关键词兜底抽牌 |
 | `adjustment.emoji_enabled` | `true` | 结果用 emoji |
@@ -219,6 +227,9 @@ WebUI 插件设置页按 **「常用 / 抽牌 / 高级」** 三个页签组织�
 
 **卡面下载失败怎么办？**
 先确认部署机网络能访问牌组 `base_url` 指向的图源；必要时在配置里开启代理，然后 `/tarots cache` 重新缓存。缓存过的图片后续不再联网。
+
+**灵契秘仪第一次使用要下载多久？**
+资源包约 214 MiB，首次启用需要联网下载（磁盘占用约 214 MiB）；插件校验 ZIP/manifest/78 图 SHA-256 后安装，之后抽牌与重启都从本地读取。网络不可用时可让管理员用 `/tarots import <本地zip路径>` 导入同一版本。升级失败会保留旧版本；当前牌局固定原资源版本。
 
 **为什么默认没有 bilibili 牌组？**
 B 站 2233 娘形象不是开放版权。为了不默认分发风险素材，2.0.0 把它改为「可选、默认关闭」，确认使用权后用 `/tarots allow bilibili` 解锁。

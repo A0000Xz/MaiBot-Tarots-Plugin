@@ -57,7 +57,7 @@ class FormationAndDeckTest(unittest.TestCase):
 
     def test_available_decks(self) -> None:
         decks = PLUGIN.available_deck_ids()
-        for expected in ("bilibili", "classical", "east", "elaine"):
+        for expected in ("bilibili", "classical", "east", "elaine", "kindred-arcana"):
             self.assertIn(expected, decks)
         self.assertIsNone(PLUGIN.load_deck("不存在的牌组"))
 
@@ -83,6 +83,18 @@ class FormationAndDeckTest(unittest.TestCase):
         self.assertEqual(len(PLUGIN.deck_card_range(classical, "小阿卡纳")), 56)
         self.assertEqual(len(PLUGIN.deck_card_range(east, "大阿卡纳")), 22)
         self.assertEqual(PLUGIN.deck_card_range(east, "小阿卡纳"), [])
+        kindred = PLUGIN.load_deck("kindred-arcana")
+        self.assertEqual(kindred["meta"]["pack_deck_id"], "kindred-arcana")
+        self.assertEqual(len(PLUGIN.deck_card_range(kindred, "全部")), 78)
+        self.assertEqual(len(PLUGIN.deck_card_range(kindred, "大阿卡纳")), 22)
+        self.assertEqual(len(PLUGIN.deck_card_range(kindred, "小阿卡纳")), 56)
+        self.assertEqual(kindred["cards"]["8"]["name"], "力量")
+        self.assertEqual(kindred["cards"]["11"]["name"], "正义")
+        self.assertEqual(kindred["cards"]["8"]["stableId"], "major-08")
+        self.assertEqual(kindred["cards"]["0"]["info"]["imgUrl"], "assets/cards/major-00.png")
+        classical = PLUGIN.load_deck("classical")
+        self.assertEqual(kindred["cards"]["0"]["info"]["description"], classical["cards"]["0"]["info"]["description"])
+        self.assertEqual(kindred["cards"]["8"]["info"]["reverseDescription"], classical["cards"]["8"]["info"]["reverseDescription"])
 
 
 class TextBuildTest(unittest.TestCase):

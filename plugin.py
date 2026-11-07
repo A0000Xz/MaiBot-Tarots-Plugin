@@ -7,6 +7,7 @@ WebUI 配置页布局在 config_ui.py。
 
 import asyncio
 import base64
+import io
 import json
 import random
 import re
@@ -21,6 +22,7 @@ from typing import Any, ClassVar
 from maibot_sdk import Command, HookHandler, MaiBotPlugin, PluginConfigBase, Tool
 from maibot_sdk.types import HookMode, HookOrder, ToolParameterInfo, ToolParamType
 
+from . import deck_pack
 from . import tarots_core
 from .config import TarotsConfig
 from .config_ui import build_config_ui_schema
@@ -56,7 +58,7 @@ from .tarots_core import (
 
 
 _TAROTS_COMMAND_PATTERN = (
-    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations|newformation)"
+    r"/tarots\s+(?P<action>cache|switch|list|allow|lock|daily|formations|newformation|import)"
     r"(?:\s+(?P<value>\S+))?(?:\s+(?P<rest>.*))?"
 )
 
@@ -90,6 +92,8 @@ class TarotsPlugin(MaiBotPlugin):
         self.ctx.paths.data_dir.mkdir(parents=True, exist_ok=True)
         self._reload_formations()
         self._apply_deck_state()
+        deck_pack.cleanup_staging(self.ctx.paths.data_dir)
+        self._log_pack_state()
         self.ctx.logger.info(
             "塔罗工坊已加载：%d 种牌阵（含自定义），当前牌组=%s，可用牌组=%s，管理员=%d",
             len(self._formations),
@@ -110,7 +114,83 @@ class TarotsPlugin(MaiBotPlugin):
         del config_data
         self._reload_formations()
         self._apply_deck_state()
+        self._log_pack_state()
         self.ctx.logger.info("塔罗工坊配置已更新：scope=%s version=%s 当前牌组=%s", scope, version, self._using_cards)
+
+    # ──── 灵契秘仪资源包 ────
+
+    def _kindred_enabled(self) -> bool:
+        return bool(self.config.deck_pack.enabled and self.config.deck_pack.kindred_arcana_enabled)
+
+    def _kindred_manifest(self) -> dict[str, Any] | None:
+        if not self._kindred_enabled():
+            return None
+        try:
+            return deck_pack.active_manifest(self.ctx.paths.data_dir)
+        except Exception:
+            self.ctx.logger.warning("读取灵契秘仪资源状态失败", exc_info=True)
+            return None
+
+    def _active_pack_version(self) -> str | None:
+        manifest = self._kindred_manifest()
+        if manifest is None:
+            return None
+        version = str(manifest.get("contentVersion") or "").strip()
+        return version or None
+
+    def _log_pack_state(self) -> None:
+        if not self._kindred_enabled():
+            return
+        manifest = self._kindred_manifest()
+        if manifest is None:
+            self.ctx.logger.info(
+                "灵契秘仪资源：未安装（首次切换时下载固定版本 %s）", deck_pack.CONTENT_VERSION
+            )
+        else:
+            self.ctx.logger.info("灵契秘仪资源：已安装 v%s", manifest.get("contentVersion"))
+
+    async def _ensure_kindred_pack(self) -> dict[str, Any]:
+        """确保灵契秘仪资源可用；未安装时下载固定版本（失败不改变旧版本）。"""
+
+        manifest = self._kindred_manifest()
+        if manifest is not None:
+            return manifest
+        config = self.config.deck_pack
+        proxy_url = self.config.proxy.proxy_url if self.config.proxy.enable_proxy else ""
+        self.ctx.logger.info("开始下载灵契秘仪资源包 v%s ...", deck_pack.CONTENT_VERSION)
+        manifest = await asyncio.to_thread(
+            deck_pack.ensure_available,
+            self.ctx.paths.data_dir,
+            url=config.download_url.strip(),
+            auto_download=config.auto_download,
+            proxy_url=proxy_url,
+            timeout=300,
+        )
+        self.ctx.logger.info("灵契秘仪资源已就绪：v%s", manifest.get("contentVersion"))
+        return manifest
+
+    async def _import_kindred_pack(self, raw_path: str) -> str:
+        usage = "用法：/tarots import <本地 zip 路径>，例如 /tarots import D:\\kindred-arcana-public.zip"
+        path = Path(raw_path.strip().strip('"').strip("'"))
+        if not raw_path.strip() or not path.is_file():
+            return usage
+        try:
+            result = await asyncio.to_thread(
+                deck_pack.install_zip, self.ctx.paths.data_dir, path
+            )
+        except deck_pack.DeckPackError as exc:
+            return f"⚠️ 导入失败（{exc.code}）：{exc.message}"
+        self.ctx.logger.info("灵契秘仪资源已通过本地导入安装：v%s", result["version"])
+        return (
+            f"✅ 已导入「灵契秘仪」资源包 v{result['version']}（SHA-256 校验通过）\n"
+            "现在可以：/tarots switch kindred-arcana"
+        )
+
+    def _uses_pack_images(self) -> bool:
+        deck = self._deck
+        if deck is None:
+            return False
+        return str(deck["meta"].get("pack_deck_id") or "") == deck_pack.DECK_ID
 
     # ──── 抽牌入口：Tool ────
 
@@ -219,7 +299,7 @@ class TarotsPlugin(MaiBotPlugin):
 
     @Command(
         "tarots_command",
-        description="/tarots daily | formations（所有人）｜ list / switch / allow / lock / cache / newformation（管理员）",
+        description="/tarots daily | formations（所有人）｜ list / switch / allow / lock / cache / newformation / import（管理员）",
         pattern=_TAROTS_COMMAND_PATTERN,
     )
     async def handle_tarots_command(self, **kwargs: Any) -> tuple[bool, str, int]:
@@ -255,12 +335,14 @@ class TarotsPlugin(MaiBotPlugin):
             message = await self._lock_deck(value)
         elif action == "cache":
             message = await self._cache_all_images(stream_id)
+        elif action == "import":
+            message = await self._import_kindred_pack((value + " " + rest).strip())
         elif action == "daily":
             ok = await self._daily_draw(stream_id, user_id)
             message = "🎴 今日一牌已发送。" if ok else "⚠️ 今日一牌没发出去，稍后再试。"
             skip_send = ok
         else:
-            message = "用法：/tarots daily｜list｜switch <牌组>｜allow <牌组>｜lock <牌组>｜cache"
+            message = "用法：/tarots daily｜list｜switch <牌组>｜allow <牌组>｜lock <牌组>｜cache｜import <zip>"
 
         if not skip_send:
             await self._reply_text(stream_id, message)
@@ -309,11 +391,12 @@ class TarotsPlugin(MaiBotPlugin):
             for card_id in selected_ids
         ]
         positions = formation.get("represent") or []
+        pack_version = self._active_pack_version() if self._using_cards == deck_pack.DECK_ID else None
 
         images: list[bytes | None] = []
         image_failures: list[str] = []
         for card_id, is_reversed in cards:
-            image_bytes = await self._get_card_image(card_id, is_reversed)
+            image_bytes = await self._get_card_image(card_id, is_reversed, pack_version)
             images.append(image_bytes)
             if image_bytes is None:
                 image_failures.append(str(deck["cards"][card_id].get("name") or card_id))
@@ -440,14 +523,18 @@ class TarotsPlugin(MaiBotPlugin):
             detail.append(
                 {
                     "position": positions[index] if index < len(positions) else f"位置{index + 1}",
+                    "cardId": str(card.get("stableId") or info.get("stableId") or card_id),
                     "name": str(card.get("name") or card_id),
                     "reversed": is_reversed,
                     "description": description,
                 }
             )
+        pack_version = self._active_pack_version() if self._using_cards == deck_pack.DECK_ID else ""
         self._last_draws[stream_id] = {
             "ts": now,
             "formation": formation_name,
+            "deckId": self._using_cards,
+            "contentVersion": pack_version,
             "deck": self._using_cards,
             "question": question,
             "cards": detail,
@@ -522,10 +609,10 @@ class TarotsPlugin(MaiBotPlugin):
 
     # ──── 图片下载与缓存 ────
 
-    async def _get_card_image(self, card_id: str, is_reversed: bool) -> bytes | None:
+    async def _get_card_image(self, card_id: str, is_reversed: bool, version: str | None = None) -> bytes | None:
         """取卡面图（缓存优先）；逆位旋转 180°。"""
 
-        source = await self._ensure_cached_image(card_id)
+        source = await self._ensure_cached_image(card_id, version)
         if source is None:
             return None
         if not is_reversed:
@@ -533,15 +620,15 @@ class TarotsPlugin(MaiBotPlugin):
         rotated = rotate_image_180(source)
         return rotated if rotated is not None else source
 
-    async def _ensure_cached_image(self, card_id: str) -> bytes | None:
+    async def _ensure_cached_image(self, card_id: str, version: str | None = None) -> bytes | None:
         """确保卡面已缓存，返回图片字节。"""
 
-        cache_key = (self._using_cards, card_id)
+        cache_key = (self._using_cards, version or "", card_id)
         cached = self._image_cache.get(cache_key)
         if cached is not None:
             return cached
         if self._uses_local_images():
-            local_path = self._local_image_path(card_id)
+            local_path = self._local_image_path(card_id, version)
             if local_path is None:
                 self.ctx.logger.warning("本地卡面缺失：deck=%s card=%s", self._using_cards, card_id)
                 return None
@@ -576,8 +663,8 @@ class TarotsPlugin(MaiBotPlugin):
         value = deck["meta"].get("local_images")
         return value is True or str(value).strip().lower() == "true"
 
-    def _local_image_path(self, card_id: str) -> Path | None:
-        """解析本地卡面路径，并阻止路径穿越。"""
+    def _local_image_path(self, card_id: str, version: str | None = None) -> Path | None:
+        """解析本地卡面路径，并阻止路径穿越；资源包牌组从本地缓存版本目录读取。"""
 
         deck = self._deck
         if deck is None:
@@ -589,6 +676,8 @@ class TarotsPlugin(MaiBotPlugin):
         relative = str(info.get("imgUrl") or "").strip().lstrip("/\\")
         if not relative:
             return None
+        if str(deck["meta"].get("pack_deck_id") or "") == deck_pack.DECK_ID:
+            return deck_pack.image_path(self.ctx.paths.data_dir, relative, version=version)
         base_dir = (tarots_core.TAROT_JSON_DIR / self._using_cards).resolve()
         path = (base_dir / relative).resolve()
         if path != base_dir and base_dir not in path.parents:
@@ -661,7 +750,11 @@ class TarotsPlugin(MaiBotPlugin):
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
-                {"using_cards": self._using_cards, "unlocked_decks": self._unlocked_decks},
+                {
+                    "using_cards": self._using_cards,
+                    "unlocked_decks": self._unlocked_decks,
+                    "using_deck_version": self._active_pack_version() or "",
+                },
                 ensure_ascii=False,
                 indent=2,
             ),
@@ -675,6 +768,10 @@ class TarotsPlugin(MaiBotPlugin):
         unlocked = state.get("unlocked_decks")
         self._unlocked_decks = [str(item).strip() for item in unlocked] if isinstance(unlocked, list) else []
         self._using_cards = self._resolve_using_cards()
+        if self._using_cards == deck_pack.DECK_ID and self._kindred_manifest() is None:
+            self.ctx.logger.warning("灵契秘仪资源未安装，回退到默认牌组")
+            fallback = [deck for deck in self._allowed_decks() if deck != deck_pack.DECK_ID]
+            self._using_cards = fallback[0] if fallback else ""
         self._deck = load_deck(self._using_cards) if self._using_cards else None
 
     def _allowed_decks(self) -> list[str]:
@@ -685,6 +782,8 @@ class TarotsPlugin(MaiBotPlugin):
         for deck_id in [*self.config.cards.use_cards, *self._unlocked_decks]:
             if deck_id in available and deck_id not in allowed:
                 allowed.append(deck_id)
+        if self._kindred_enabled() and deck_pack.DECK_ID in available and deck_pack.DECK_ID not in allowed:
+            allowed.append(deck_pack.DECK_ID)
         return allowed
 
     def _resolve_using_cards(self) -> str:
@@ -722,12 +821,20 @@ class TarotsPlugin(MaiBotPlugin):
             mark = "✅" if deck_id == self._using_cards else "⚪"
             suffix = " ← 当前" if deck_id == self._using_cards else ""
             blocks.append(f"{mark} {name}{suffix}")
+            if deck_id == deck_pack.DECK_ID:
+                manifest = self._kindred_manifest()
+                if manifest is None:
+                    blocks.append("   ⬇️ 未安装：首次切换时下载固定版本，或 /tarots import <zip>")
+                else:
+                    blocks.append(f"   📦 资源 v{manifest.get('contentVersion')} 已就绪（离线可用）")
 
         if locked:
             blocks.append("")
             blocks.append(f"🔒 未启用牌组（{len(locked)} 套）")
             blocks.append("━━━━━━━━━━━━━━")
             for deck_id in locked:
+                if deck_id == deck_pack.DECK_ID and not self._kindred_enabled():
+                    continue
                 deck = load_deck(deck_id)
                 if deck is None:
                     continue
@@ -740,7 +847,7 @@ class TarotsPlugin(MaiBotPlugin):
 
         blocks.append("")
         blocks.append("切换：/tarots switch <牌组名>")
-        blocks.append("缓存：/tarots cache ｜ 撤销解锁：/tarots lock <牌组名>")
+        blocks.append("缓存：/tarots cache ｜ 撤销解锁：/tarots lock <牌组名> ｜ 本地导入：/tarots import <zip>")
         return "\n".join(blocks)
 
     async def _new_formation(self, name: str, rest: str) -> str:
@@ -817,6 +924,8 @@ class TarotsPlugin(MaiBotPlugin):
 
         if not deck_id:
             return "用法：/tarots lock <牌组名>"
+        if deck_id == deck_pack.DECK_ID:
+            return "「灵契秘仪」是可选资源包牌组，不能锁定；要隐藏请在配置 [deck_pack] 关闭。"
         if deck_id in self.config.cards.use_cards:
             return f"「{deck_id}」属于配置 [cards] use_cards 里的默认启用牌组，请改配置来关闭，不能在这里锁定。"
         if deck_id not in self._unlocked_decks:
@@ -832,6 +941,14 @@ class TarotsPlugin(MaiBotPlugin):
     async def _switch_deck(self, deck_id: str) -> str:
         if not deck_id:
             return "用法：/tarots switch <牌组名>，可先用 /tarots list 查看。"
+        if deck_id == deck_pack.DECK_ID:
+            if not self._kindred_enabled():
+                return "⚠️ 「灵契秘仪」资源包已在配置 [deck_pack] 中关闭。"
+            if self._kindred_manifest() is None:
+                try:
+                    await self._ensure_kindred_pack()
+                except deck_pack.DeckPackError as exc:
+                    return f"⚠️ 灵契秘仪资源不可用（{exc.code}）：{exc.message}"
         if deck_id not in self._allowed_decks():
             deck = load_deck(deck_id)
             notice = self._deck_notice(deck) if deck is not None else ""
@@ -855,6 +972,19 @@ class TarotsPlugin(MaiBotPlugin):
         if deck is None:
             return "⚠️ 没有可用的牌组。"
         card_ids = list(deck["cards"].keys())
+        if self._uses_pack_images():
+            manifest = self._kindred_manifest()
+            version = manifest.get("contentVersion") if manifest else None
+            missing = [
+                card_id
+                for card_id in card_ids
+                if self._local_image_path(card_id, version) is None
+            ]
+            if missing:
+                return f"⚠️ 本地资源缺失 {len(missing)} 张牌面，请重新 /tarots import 或等待自动下载。"
+            return (
+                f"✅ 本地资源已就绪：{len(card_ids)} 张牌面（v{version}，无需联网下载）"
+            )
         await self._reply_text(stream_id, f"⏳ 开始缓存「{self._using_cards}」牌组的 {len(card_ids)} 张牌面，请稍候…")
         success = 0
         for card_id in card_ids:
@@ -886,7 +1016,27 @@ class TarotsPlugin(MaiBotPlugin):
             return
         image = await self._get_card_image(card_id, False)
         if image is not None:
-            await self._send_image(image, stream_id)
+            await self._send_image(self._thumbnail_bytes(image), stream_id)
+
+
+    @staticmethod
+    def _thumbnail_bytes(image_bytes: bytes, max_side: int = 480) -> bytes:
+        """等比缩小的预览图；不裁切原图内容。"""
+
+        try:
+            from PIL import Image
+        except ImportError:
+            return image_bytes
+        try:
+            with Image.open(io.BytesIO(image_bytes)) as image:
+                if max(image.size) <= max_side:
+                    return image_bytes
+                image.thumbnail((max_side, max_side))
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG", optimize=True)
+                return buffer.getvalue()
+        except Exception:
+            return image_bytes
 
     async def _reply_text(self, stream_id: str, text: str) -> bool:
         """发文字；只尝试一次（回执超时不重发，避免重复消息）。"""

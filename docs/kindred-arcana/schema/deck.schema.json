@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kindred Arcana deck manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "deckId",
+    "title",
+    "contentVersion",
+    "status",
+    "sourceEdition",
+    "structure",
+    "order",
+    "imageCount",
+    "reversedImagePolicy",
+    "license",
+    "cards"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "deckId": {
+      "const": "kindred-arcana"
+    },
+    "title": {
+      "$ref": "#/$defs/title"
+    },
+    "contentVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "status": {
+      "enum": [
+        "integration-preview",
+        "candidate",
+        "release"
+      ]
+    },
+    "sourceEdition": {
+      "type": "string",
+      "minLength": 1
+    },
+    "structure": {
+      "const": "RWS-78"
+    },
+    "order": {
+      "const": [
+        "major",
+        "cups",
+        "pentacles",
+        "swords",
+        "wands"
+      ]
+    },
+    "imageCount": {
+      "const": 78
+    },
+    "reversedImagePolicy": {
+      "const": "rotate-upright-180-degrees"
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "spdx",
+        "publicDistributionReady",
+        "notice",
+        "attribution"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending-review",
+            "reviewed-scoped"
+          ]
+        },
+        "spdx": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publicDistributionReady": {
+          "type": "boolean"
+        },
+        "notice": {
+          "const": "RIGHTS.md"
+        },
+        "attribution": {
+          "const": "ATTRIBUTION.md"
+        }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "minItems": 78,
+      "maxItems": 78,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "ordinal",
+          "arcana",
+          "suit",
+          "rank",
+          "name",
+          "model",
+          "interpretation",
+          "image",
+          "rightsRef"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(major-(0[0-9]|1[0-9]|2[01])|(cups|pentacles|swords|wands)-(ace|[2-9]|10|page|knight|queen|king))$"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 77
+          },
+          "arcana": {
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "suit": {
+            "enum": [
+              null,
+              "cups",
+              "pentacles",
+              "swords",
+              "wands"
+            ]
+          },
+          "rank": {
+            "type": "string"
+          },
+          "name": {
+            "$ref": "#/$defs/title"
+          },
+          "model": {
+            "enum": [
+              "deepseek",
+              "gemini",
+              "claude",
+              "gpt",
+              "qwen",
+              "doubao",
+              "seed",
+              "glm",
+              "grok",
+              "kimi",
+              "minimax"
+            ]
+          },
+          "interpretation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rightsRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "image": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "mime",
+              "width",
+              "height",
+              "bytes",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^assets/cards/[a-z0-9-]+\\.png$"
+              },
+              "mime": {
+                "const": "image/png"
+              },
+              "width": {
+                "const": 800
+              },
+              "height": {
+                "const": 1200
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 25,
+                "maximum": 16777216
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "title": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zh",
+        "en"
+      ],
+      "properties": {
+        "zh": {
+          "type": "string",
+          "minLength": 1
+        },
+        "en": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "release"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "license": {
+            "properties": {
+              "status": {
+                "const": "reviewed-scoped"
+              },
+              "publicDistributionReady": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
