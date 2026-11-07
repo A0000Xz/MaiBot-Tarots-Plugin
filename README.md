@@ -126,7 +126,7 @@
 | `classical` 经典韦特 | 78 | 韦特塔罗原版已进入公有领域；图源仓库为 MIT | ✅ 启用 |
 | `elaine` Elaine 韦特公版 | 78 | Rider-Waite-Smith 公版牌面（1909）；图源仓库仅托管公版扫描图 | ✅ 启用 |
 | `bilibili` B站幻星集 | 78 | **2233 娘形象版权归 B 站**，非开放版权，仅限个人非商业娱乐 | ⛔ 默认关闭 |
-| `kindred-arcana` 灵契秘仪 | 78 | **原创牌组**（AI 辅助创作、人工筛选修订）；图片在独立仓库固定版本 Release 分发，插件只含元数据；牌面许可见牌组仓库 `LICENSE-ARTWORK.md` | ✅ 可选（首次切换下载） |
+| `kindred-arcana` 灵契秘仪 | 78 | **作者原创牌组**；仅授权在本插件内使用，其他用途需作者书面授权；图片在独立仓库固定版本 Release 分发，插件只含元数据；许可见牌组仓库 `LICENSE-ARTWORK.md` / `AUTHORIZATION.md` | ✅ 可选（首次切换下载） |
 | `east` 东方塔罗 | 22 | 东方 Project 二次创作，需遵守 ZUN 二创规约（非商业、注明来源） | ⛔ 默认关闭 |
 
 - 默认启用 `classical` 与 `elaine`（都是公版韦特）
@@ -245,7 +245,7 @@ B 站 2233 娘形象不是开放版权。为了不默认分发风险素材，2.0
 
 ## 许可与致谢
 
-- 本项目以 [AGPL-3.0](LICENSE) 协议开源，沿用原作者 A0000Xz 的协议
+- 插件代码以 [AGPL-3.0](LICENSE) 协议开源，沿用原作者 A0000Xz 的协议；**灵契秘仪牌面是独立版权作品，不适用 AGPL**，仅授权在本插件内使用，其他用途需作者书面授权（见牌组仓库 `LICENSE-ARTWORK.md` / `AUTHORIZATION.md`）
 - 感谢原作者 A肆零西烛 在 2.0.0 迁移与重构中的架构建议与代码 review
 - 玩法参考 [FloatTech/ZeroBot-Plugin](https://github.com/FloatTech/ZeroBot-Plugin) 的塔罗牌插件
 - 牌面数据与图源见各 `tarots.json` 的 `_meta`；`classical` / `elaine` 使用公有领域韦特牌
