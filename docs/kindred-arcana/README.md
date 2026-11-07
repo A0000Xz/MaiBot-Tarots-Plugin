@@ -1,8 +1,87 @@
-# 灵契秘仪资源（插件侧接入记录）
+# 灵契秘仪 / Kindred Arcana
 
-- deckId: `kindred-arcana`
-- contentVersion: `1.0.0-rc.5`
-- 资源仓库: https://github.com/NethielChou/kindred-arcana
-- 图片只在牌组仓库的固定版本 Release 中分发，本插件仓库不包含图片。
-- 插件首次启用时下载并校验 ZIP/manifest/78 图摘要，之后离线读取。
-- 许可：`LicenseRef-Kindred-Arcana-Artwork`（见牌组仓库 LICENSE-ARTWORK.md / RIGHTS.md）。
+**作者原创塔罗牌组。仅授权 MaiBot「塔罗工坊」插件及其用户在本插件内下载与使用；其他任何用途必须事先取得作者书面授权。**
+
+> 本仓库是作品分发与权利说明仓库，**不是开源项目**。公开可见、可下载是为了让插件分发与用户核验资源；公开可见不等于授权使用，未明确授予的权利均由作者保留。授权申请见 [AUTHORIZATION.md](AUTHORIZATION.md)。
+
+- **deckId**: `kindred-arcana`
+- **中文名**: 灵契秘仪
+- **英文名**: Kindred Arcana
+- **作者**: NethielChou
+- **内容版本**: `1.0.0-rc.5`
+- **接口版本**: `schemaVersion=1`
+- **结构**: RWS-78（大阿卡纳 22 + 圣杯/星币/宝剑/权杖各 14）
+- **图片**: 78 张 800×1200 PNG，固定 ASCII cardId，正逆位共用正位图（逆位旋转 180°）
+
+## 目录
+
+```text
+manifest.json              # 牌组清单（78 张、cardId、图片摘要、许可状态）
+resources.lock.json        # 发布锁：版本、manifest/资源包 SHA-256、下载地址
+schema/deck.schema.json    # 数据接口
+RIGHTS.md                  # 权利与使用说明
+ATTRIBUTION.md             # 创作与角色参考来源登记
+LICENSE-ARTWORK.md         # 牌面有限许可条款（仅插件内使用）
+LICENSE                    # 权利声明（All rights reserved）
+AUTHORIZATION.md           # 其他用途的书面授权申请流程
+AUTHORIZATION-TEMPLATE.md  # 书面许可协议模板
+CHANGELOG.md
+RELEASE-NOTES.md
+```
+
+图片资源不直接放在 Git 历史中，只作为固定版本的 Release 附件发布：
+
+- Release: `v1.0.0-rc.5`
+- 资源包: `kindred-arcana-1.0.0-rc.5-public.zip`
+
+插件按 `resources.lock.json` 中固定的版本、manifest SHA 与 ZIP SHA 校验后安装，禁止追随 latest。
+
+## 在 MaiBot 插件中使用（已授权范围）
+
+1. 将「塔罗工坊」插件更新到支持本源仓库的版本；
+2. 在聊天中发送 `/tarots switch kindred-arcana`；
+3. 首次启用时插件下载固定版本资源包，校验 manifest 与 78 张图片摘要后安装到本地；
+4. 之后抽牌与重启均从本地读取，支持离线使用；
+5. 网络不可用时，可由管理员用 `/tarots import <本地zip路径>` 导入同一版本资源包。
+
+以上下载、缓存、插件内抽牌/展示/牌阵布局图属于已授权范围；不得把图片从插件中提取出来另作他用。
+
+## 授权范围
+
+**无需另行申请（仅限插件内）：**
+
+- 「塔罗工坊」插件维护者为插件分发、下载、校验、安装而复制与提供资源包；
+- 最终用户在插件内下载、缓存、抽牌、查看、生成牌阵布局图，且限于个人非商业使用。
+
+**必须事先取得作者书面授权：**
+
+- 商业使用（收费服务、广告、赞助、引流、企业内训等任何直接或间接盈利场景）；
+- 把牌面用于其他插件、应用、网站、小程序、游戏、出版物、周边、印刷品、NFT/数字藏品；
+- 单独或打包再分发原始/修改后的图片，或放入素材库、数据集；
+- 二次创作、改编、重绘、剪辑、训练 AI/机器学习模型；
+- 去除、遮挡、篡改署名、版权信息或本许可说明；
+- 任何暗示作者为你的产品背书的使用。
+
+授权申请流程与所需材料见 [AUTHORIZATION.md](AUTHORIZATION.md)；书面协议模板见 [AUTHORIZATION-TEMPLATE.md](AUTHORIZATION-TEMPLATE.md)。**未签署书面协议前不构成授权，口头或聊天中的“可以”不构成许可。**
+
+## 校验
+
+资源包 SHA-256：见 `resources.lock.json` 与 Release 说明。
+任何 manifest/图片摘要不匹配、ZIP 越界条目、重复条目、损坏图片都会被拒绝安装；升级失败保留旧版本。
+
+## 许可与署名
+
+- **牌面**：见 [LICENSE-ARTWORK.md](LICENSE-ARTWORK.md)。这是**有限、可撤销、仅限插件使用**的许可，不是开源许可，也不是 CC/MIT/CC0。
+- **仓库文档、manifest、schema、lock**：All rights reserved；仅为发布、校验与权利说明目的提供，不构成对这些材料其他用途的授权。
+- **角色参考来源**：见 [ATTRIBUTION.md](ATTRIBUTION.md)；第三方角色/作品权利归各自权利人，本仓库不构成对第三方权利的授权证明。
+- 插件代码本身在独立仓库并适用其自身许可证（AGPL-3.0），与本牌面许可相互独立。
+
+## 版本策略
+
+- 版本固定，插件不自动追 latest；新版本需插件侧的锁同步更新。
+- 图面更新必须提升 `contentVersion`，不得原地替换同版本资源。
+- 本仓库为公开分发仓库；如未来改为私有/鉴权分发，会另行公告，插件侧同步调整。
+
+---
+
+作者：NethielChou · 仓库：<https://github.com/NethielChou/kindred-arcana>
