@@ -34,7 +34,7 @@
 
 ### 许可
 
-牌面为作者原创作品，许可为 `LicenseRef-Kindred-Arcana-Artwork`：仅授权在 MaiBot「塔罗工坊」插件内下载与使用（个人非商业）；商用、其他插件/应用、再分发、二次创作、AI 训练等必须事先取得作者书面授权。详细条款、授权申请与角色来源见牌组仓库的 `LICENSE-ARTWORK.md`、`AUTHORIZATION.md`、`RIGHTS.md`、`ATTRIBUTION.md`。
+牌面为 **AI 生成内容（GPT 生成，经作者人工策划/筛选/编排修订）**，许可为 `LicenseRef-Kindred-Arcana-Artwork`：仅授权在 MaiBot「塔罗工坊」插件内下载与使用（个人非商业）；商用、其他插件/应用、再分发、二次创作、AI 训练等必须事先取得作者书面授权。AI 生成内容的可版权性存在不确定性，作者不保证在所有法域均受著作权保护。详细条款、授权申请、AI 标识与角色来源见牌组仓库的 `LICENSE-ARTWORK.md`、`AUTHORIZATION.md`、`RIGHTS.md`、`ATTRIBUTION.md`。
 
 ## 一、自定义牌组
 
