@@ -9,6 +9,7 @@ import shutil
 import sys
 import types
 import unittest
+import urllib.error
 import uuid
 from pathlib import Path
 from typing import Any
@@ -608,6 +609,69 @@ class DownloadTest(PluginTestCase):
 
         self.assertEqual(result, TINY_PNG)
         self.assertEqual(target.read_bytes(), TINY_PNG)
+
+    def test_raw_github_download_candidates(self) -> None:
+        candidates = PLUGIN.TarotsPlugin._download_candidates(
+            "https://raw.githubusercontent.com/owner/repo/main/assets/card.png"
+        )
+        self.assertEqual(
+            candidates,
+            [
+                "https://raw.githubusercontent.com/owner/repo/main/assets/card.png",
+                "https://cdn.jsdelivr.net/gh/owner/repo@main/assets/card.png",
+                "https://gh-proxy.com/https://raw.githubusercontent.com/owner/repo/main/assets/card.png",
+            ],
+        )
+
+    async def test_raw_github_falls_back_to_jsdelivr(self) -> None:
+        plugin, _ = await self.make_plugin()
+        plugin._deck = PLUGIN.load_deck("classical")
+        plugin._using_cards = "classical"
+        target = self._tmp_dir / "cache" / "0_norm.png"
+        seen: list[str] = []
+
+        class FakeResponse:
+            def __init__(self, data: bytes) -> None:
+                self._data = data
+
+            def read(self, amount: int = -1) -> bytes:
+                return self._data if amount is None or amount < 0 else self._data[:amount]
+
+            def __enter__(self) -> "FakeResponse":
+                return self
+
+            def __exit__(self, *args: Any) -> bool:
+                return False
+
+        def fake_urlopen(request: Any, timeout: Any = None) -> FakeResponse:
+            url = str(getattr(request, "full_url", request))
+            seen.append(url)
+            if "raw.githubusercontent.com" in url:
+                raise urllib.error.URLError(ConnectionResetError(10054, "远程主机强迫关闭了一个现有的连接"))
+            if "cdn.jsdelivr.net" in url:
+                return FakeResponse(TINY_PNG)
+            raise AssertionError(f"不应请求：{url}")
+
+        with mock.patch.object(PLUGIN.urllib.request, "urlopen", side_effect=fake_urlopen):
+            result = plugin._download_image("0", target)
+
+        self.assertEqual(result, TINY_PNG)
+        self.assertEqual(target.read_bytes(), TINY_PNG)
+        self.assertTrue(any("cdn.jsdelivr.net" in url for url in seen), seen)
+
+    async def test_download_failure_returns_none(self) -> None:
+        plugin, _ = await self.make_plugin()
+        plugin._deck = PLUGIN.load_deck("classical")
+        plugin._using_cards = "classical"
+        target = self._tmp_dir / "cache" / "0_norm.png"
+
+        def always_fail(request: Any, timeout: Any = None) -> None:
+            raise urllib.error.URLError(ConnectionResetError(10054, "模拟连接重置"))
+
+        with mock.patch.object(PLUGIN.urllib.request, "urlopen", side_effect=always_fail), \
+                mock.patch.object(PLUGIN.time, "sleep", return_value=None):
+            result = plugin._download_image("0", target)
+        self.assertIsNone(result)
 
 
 class ConfigTest(PluginTestCase):

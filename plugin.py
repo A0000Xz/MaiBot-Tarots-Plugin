@@ -13,6 +13,7 @@ import random
 import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Sequence
 from datetime import date
@@ -704,6 +705,25 @@ class TarotsPlugin(MaiBotPlugin):
             return None
         return f"{base_url}{image_path}"
 
+    @staticmethod
+    def _download_candidates(url: str) -> list[str]:
+        """返回主图源 + 可用镜像；目前只对 GitHub raw 做等价镜像。"""
+
+        candidates = [url]
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.netloc.lower() != "raw.githubusercontent.com":
+            return candidates
+        parts = [part for part in parsed.path.split("/") if part]
+        # /<owner>/<repo>/<branch>/<path...>
+        if len(parts) < 4:
+            return candidates
+        owner, repo, branch = parts[0], parts[1], parts[2]
+        rest = "/".join(parts[3:])
+        candidates.append(f"https://cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/{rest}")
+        candidates.append(f"https://gh-proxy.com/{url}")
+        # 去重并保持顺序
+        return list(dict.fromkeys(candidates))
+
     def _download_image(self, card_id: str, save_path: Path) -> bytes | None:
         """同步下载卡面（在线程中执行），返回字节并写入缓存。"""
 
@@ -711,31 +731,66 @@ class TarotsPlugin(MaiBotPlugin):
         if not url:
             self.ctx.logger.warning("牌组缺少卡面地址：card=%s", card_id)
             return None
+        deck = self._deck or {}
+        cards = deck.get("cards") if isinstance(deck.get("cards"), dict) else {}
+        card = cards.get(card_id) if isinstance(cards, dict) else {}
+        card_name = str(card.get("name") or card_id) if isinstance(card, dict) else card_id
+        deck_id = self._using_cards or "unknown"
+        candidates = self._download_candidates(url)
         save_path.parent.mkdir(parents=True, exist_ok=True)
+        last_error: Exception | None = None
         for attempt in range(1, IMAGE_DOWNLOAD_RETRIES + 1):
-            try:
-                request = urllib.request.Request(url, headers={"User-Agent": "MaiBot-Tarots-Plugin/2.0"})
-                if self.config.proxy.enable_proxy and self.config.proxy.proxy_url:
-                    opener = urllib.request.build_opener(
-                        urllib.request.ProxyHandler({"http": self.config.proxy.proxy_url, "https": self.config.proxy.proxy_url})
+            for candidate in candidates:
+                try:
+                    request = urllib.request.Request(
+                        candidate, headers={"User-Agent": "MaiBot-Tarots-Plugin/2.0"}
                     )
-                    response = opener.open(request, timeout=IMAGE_DOWNLOAD_TIMEOUT)
-                else:
-                    response = urllib.request.urlopen(request, timeout=IMAGE_DOWNLOAD_TIMEOUT)
-                with response:
-                    data = response.read(IMAGE_MAX_BYTES + 1)
-                if len(data) > IMAGE_MAX_BYTES:
-                    raise ValueError("图片超过大小限制")
-                if not data:
-                    raise ValueError("图片内容为空")
-                save_path.write_bytes(data)
-                self.ctx.logger.info("卡面已缓存：%s（第 %d 次尝试）", save_path.name, attempt)
-                return data
-            except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
-                self.ctx.logger.warning("卡面下载失败（第 %d/%d 次）：%s %s", attempt, IMAGE_DOWNLOAD_RETRIES, card_id, exc)
-                if attempt < IMAGE_DOWNLOAD_RETRIES:
-                    time.sleep(2 ** (attempt - 1))
-        self.ctx.logger.error("卡面下载最终失败：%s %s", card_id, url)
+                    if self.config.proxy.enable_proxy and self.config.proxy.proxy_url:
+                        opener = urllib.request.build_opener(
+                            urllib.request.ProxyHandler(
+                                {"http": self.config.proxy.proxy_url, "https": self.config.proxy.proxy_url}
+                            )
+                        )
+                        response = opener.open(request, timeout=IMAGE_DOWNLOAD_TIMEOUT)
+                    else:
+                        response = urllib.request.urlopen(request, timeout=IMAGE_DOWNLOAD_TIMEOUT)
+                    with response:
+                        data = response.read(IMAGE_MAX_BYTES + 1)
+                    if len(data) > IMAGE_MAX_BYTES:
+                        raise ValueError("图片超过大小限制")
+                    if not data:
+                        raise ValueError("图片内容为空")
+                    save_path.write_bytes(data)
+                    source = "原图源" if candidate == url else "镜像"
+                    self.ctx.logger.info(
+                        "卡面已缓存：%s（第 %d 次尝试，%s）", save_path.name, attempt, source
+                    )
+                    return data
+                except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+                    last_error = exc
+                    continue
+            self.ctx.logger.warning(
+                "卡面下载失败（第 %d/%d 次）：deck=%s card=%s name=%s url=%s err=%s",
+                attempt,
+                IMAGE_DOWNLOAD_RETRIES,
+                deck_id,
+                card_id,
+                card_name,
+                url,
+                last_error,
+            )
+            if attempt < IMAGE_DOWNLOAD_RETRIES:
+                time.sleep(2 ** (attempt - 1))
+        mirror_note = "；已尝试 GitHub raw、jsDelivr、gh-proxy 镜像" if len(candidates) > 1 else ""
+        self.ctx.logger.error(
+            "卡面下载最终失败：deck=%s card=%s name=%s url=%s%s。"
+            "可在插件配置 [proxy] 开启代理后 /tarots cache 重试，或使用本地资源牌组。",
+            deck_id,
+            card_id,
+            card_name,
+            url,
+            mirror_note,
+        )
         return None
 
     # ──── 牌组管理 ────
